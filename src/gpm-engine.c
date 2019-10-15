@@ -79,7 +79,8 @@ enum {
 	DISCHARGING,
 	LOW_CAPACITY,
 	DEVICES_CHANGED,
-        CHARGE_CRITICAL_NOTIFY,//kobe
+    CHARGE_CRITICAL_NOTIFY,//kobe
+	CLOSE_NOTIFY,//jiangh
 	LAST_SIGNAL
 };
 
@@ -978,10 +979,11 @@ gpm_engine_device_changed_cb (UpClient *client, UpDevice *device, GpmEngine *eng
 
         //kobe
         gpointer data = NULL;
-
+	gint64 TimeToFull;
 	/* get device properties */
 	g_object_get (device,
 		      "kind", &kind,
+			  "time-to-full",&TimeToFull,
 		      NULL);
 
 	/* if battery then use composite device to cope with multiple batteries */
@@ -1070,7 +1072,13 @@ gpm_engine_device_changed_cb (UpClient *client, UpDevice *device, GpmEngine *eng
                 //save new state
 		g_object_set_data (G_OBJECT(device), "engine-warning-old", GUINT_TO_POINTER(warning));
         }*/
-
+	//jiangh
+	static gboolean notice_once = true;
+	if ( (TimeToFull == 0) && (notice_once) && (percentage < 3.0) )
+	{
+		g_signal_emit_by_name(engine,"close-notify");
+		notice_once = FALSE;
+	}
 	gpm_engine_recalculate_state (engine);
 }
 
@@ -1384,6 +1392,13 @@ gpm_engine_class_init (GpmEngineClass *klass)
                               G_STRUCT_OFFSET (GpmEngineClass, charge_critical_notify),
                               NULL, NULL, g_cclosure_marshal_VOID__POINTER,
                               G_TYPE_NONE, 1, G_TYPE_POINTER);
+        signals [CLOSE_NOTIFY] =
+                g_signal_new ("close-notify",
+                              G_TYPE_FROM_CLASS (object_class),
+                              G_SIGNAL_RUN_LAST,
+                              NULL,
+                              NULL, NULL, g_cclosure_marshal_VOID__POINTER,
+                              G_TYPE_NONE, 1, G_TYPE_POINTER);							  
 }
 
 /**

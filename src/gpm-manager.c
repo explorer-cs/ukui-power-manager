@@ -1226,6 +1226,19 @@ out:
 	g_free (native_path);
 }
 
+static void
+gpm_manager_engine_close_notify_cb (GpmEngine *engine, GpmManager *manager)
+{
+	if (gpm_manager_is_inhibit_valid (manager, FALSE, "policy action") == FALSE)
+		return FALSE;
+	
+	GpmSession *session;
+	// egg_debug ("logout, reason: too low battery!");
+	session = gpm_session_new ();
+	gpm_session_logout (session);
+	g_object_unref (session);
+	
+}
 /**
  * gpm_manager_engine_discharging_cb:
  */
@@ -2143,9 +2156,12 @@ gpm_manager_init (GpmManager *manager)
 			  G_CALLBACK (gpm_manager_engine_charge_critical_cb), manager);
 	g_signal_connect (manager->priv->engine, "charge-action",
 			  G_CALLBACK (gpm_manager_engine_charge_action_cb), manager);
-        //kobe
-        g_signal_connect (manager->priv->engine, "charge-critical-notify",
+    //kobe
+    g_signal_connect (manager->priv->engine, "charge-critical-notify",
                           G_CALLBACK (gpm_manager_engine_charge_critical_notify_cb), manager);
+	//jiangh
+    g_signal_connect (manager->priv->engine, "close-notify",
+                          G_CALLBACK (gpm_manager_engine_close_notify_cb), manager);
 
 	g_signal_connect (gtk_settings_get_default (),
 	                  "notify::gtk-icon-theme-name",
