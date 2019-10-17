@@ -1,0 +1,2 @@
+required Qt version and build way:
+/usr/share/QtMultiversion/x86_64-linux-gnu/5.9/bin/qmake ..
