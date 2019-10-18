@@ -44,6 +44,7 @@
 #include <QWidgetAction>
 #include "gsettings.h"
 #include <QCategoryAxis>
+#include "customtype.h"
 
 #define WORKING_DIRECTORY "."
 #define DBUS_SERVICE "org.freedesktop.UPower"
@@ -134,11 +135,11 @@ public:
     void setSumTab();
     void connectSlots();
     QList<QPointF> setdata(); //设置图表数据的函数接口
-    void getDcDetail(QString dcStr = NULL);
+    void getDcDetail();
     void getBtrDetail();
     void getAll(BTRDetail *dc);
     void putAttributes(QMap<QString, QVariant> &map);
-    void calcTime(QString &attr, qlonglong time);
+    void calcTime(QString &attr, uint time);
     void initBtrDetail(QString btr);
     void getDevices();
     void setupDcUI();
@@ -147,6 +148,54 @@ public:
     void addNewUI(QDBusObjectPath &path);
     int parseArguments();
     QString getWidgetAxis(uint value);
+    void setupBtrDetail();
+    QString device_kind_to_localised_text(UpDeviceKind kind, uint number);
+
+    QString getSufix(uint tim, char c)
+    {
+        QString strValue;
+        if('s'==c)
+            strValue = QString::number(tim) + " " + tr("s");
+        else if('m'==c)
+            strValue = QString::number(tim) + " " + tr("m");
+        else if('h'==c)
+            strValue = QString::number(tim,'f', 1) + " " + tr("h");
+        return strValue;
+    }
+    QString boolToString(bool ret)
+    {
+        return ret ? tr("yes") : tr("no");
+    }
+    QString
+    up_device_kind_to_string (UpDeviceKind type_enum)
+    {
+        switch (type_enum) {
+        case UP_DEVICE_KIND_LINE_POWER:
+            return tr("line-power");
+        case UP_DEVICE_KIND_BATTERY:
+            return tr("battery");
+        case UP_DEVICE_KIND_UPS:
+            return tr("ups");
+        case UP_DEVICE_KIND_MONITOR:
+            return tr("monitor");
+        case UP_DEVICE_KIND_MOUSE:
+            return tr("mouse");
+        case UP_DEVICE_KIND_KEYBOARD:
+            return tr("keyboard");
+        case UP_DEVICE_KIND_PDA:
+            return tr("pda");
+        case UP_DEVICE_KIND_PHONE:
+            return tr("phone");
+        case UP_DEVICE_KIND_MEDIA_PLAYER:
+            return tr("media-player");
+        case UP_DEVICE_KIND_TABLET:
+            return tr("tablet");
+        case UP_DEVICE_KIND_COMPUTER:
+            return tr("computer");
+        default:
+            return tr("unknown");
+        }
+    }
 
 public Q_SLOTS:
     void updateHisChart(int);
@@ -172,7 +221,7 @@ public Q_SLOTS:
     void deviceAdded(QDBusMessage msg);
     void deviceRemoved(QDBusMessage msg);
     void acPropertiesChanged(QDBusMessage msg);
-
+    void onListChanged(int row);
     void onBtrPageChanged(int index);
 protected:
     void minimumSize();

@@ -6,7 +6,10 @@ include /usr/share/dpkg/buildflags.mk
 
 %:
 	dh $@
-
+	mkdir src/ukui-power-manager-qt/ukui-power-statistics-qt/build
+	#use /usr/share/QtMultiversion/xxx/5.9/bin/qmake or higher Qt version
+	cd src/ukui-power-manager-qt/ukui-power-statistics-qt/build && qmake ../ && make
+	#mv built binary ukui-power-statistics-qt to /usr/bin/
 override_dh_install:
 	dh_install
 

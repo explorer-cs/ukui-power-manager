@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     }
     QApplication a(argc, argv);
     QString locale = QLocale::system().name();
+    qDebug()<<locale;
     QTranslator translator;
     QString qmfile = QString(WORKING_DIRECTORY"/%1.qm").arg(locale);
     translator.load(qmfile);

@@ -91,12 +91,4 @@ typedef enum {
     UP_DEVICE_LEVEL_LAST
 } UpDeviceLevel;
 
-const char	*up_device_kind_to_string		(UpDeviceKind		 type_enum);
-
-const char *
-gpm_device_kind_to_localised_text (UpDeviceKind kind, uint number);
-
-
-
-
 #endif // CUSTOMTYPE_H
