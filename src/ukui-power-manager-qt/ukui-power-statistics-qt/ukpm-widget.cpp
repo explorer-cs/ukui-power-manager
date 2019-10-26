@@ -238,66 +238,6 @@ void UkpmWidget::getDevices()
 
 }
 
-
-void UkpmWidget::initBtrDetail(QString btr)
-{
-
-    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",btr,
-            "org.freedesktop.DBus.Properties","GetAll");
-    msg << "org.freedesktop.UPower.Device";
-    QDBusMessage res = QDBusConnection::systemBus().call(msg);
-
-    if(res.type() == QDBusMessage::ReplyMessage)
-    {
-        const QDBusArgument &dbusArg = res.arguments().at(0).value<QDBusArgument>();
-        QMap<QString,QVariant> map;
-        dbusArg >> map;
-
-        btrDetailData.Type = (map.value(QString("Type")).toInt()==2) ? tr("Notebook battery") : tr("other");
-        btrDetailData.Model = map.value(QString("Model")).toString();
-        btrDetailData.Device = btr.section('/',-1);
-        btrDetailData.Vendor = map.value(QString("Vendor")).toString();
-        btrDetailData.Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
-        btrDetailData.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
-        btrDetailData.EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
-        btrDetailData.EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
-        btrDetailData.EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
-        btrDetailData.EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-        btrDetailData.IsPresent = (map.value(QString("IsPresent")).toBool()) ? tr("Yes") : tr("No");
-        btrDetailData.IsRechargeable = (map.value(QString("IsRechargeable")).toBool()) ? tr("Yes") : tr("No");
-        btrDetailData.PowerSupply = (map.value(QString("PowerSupply")).toBool()) ? tr("Yes") : tr("No");
-        btrDetailData.Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
-        flag = map.value(QString("State")).toLongLong();
-
-        switch (flag) {
-        case 1:
-            dcDetailData.Online = tr("Yes");
-            btrDetailData.State = tr("Charging");
-            break;
-        case 2:
-            dcDetailData.Online = tr("No");
-            btrDetailData.State = tr("Discharging");
-            break;
-        case 3:
-            btrDetailData.State = tr("Empty");
-            break;
-        case 4:
-            btrDetailData.State = tr("Charged");
-            break;
-        default:
-            break;
-        }
-
-        calcTime(btrDetailData.TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
-        calcTime(btrDetailData.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
-        btrDetailData.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
-    }
-    else {
-        printf("No response!\n");
-    }
-}
-
-
 void UkpmWidget::onUSBDeviceHotPlug(int drvid, int action, int devNumNow)
 {
     qDebug() << "device"<< (action > 0 ? "insert:" : "pull out:");
@@ -306,23 +246,19 @@ void UkpmWidget::onUSBDeviceHotPlug(int drvid, int action, int devNumNow)
 
 void UkpmWidget::calcTime(QString &attr, uint time)
 {
-//    qlonglong time = map.value(QString("TimeToFull")).toLongLong();
     if(time < 60)
     {
-//        attr = QString::number(time) + tr(" s");
         attr = getSufix(time,'s');
         return;
     }
     time /= 60;
     if(time < 60)
     {
-//        attr = QString::number(time) + tr(" m");
         attr = getSufix(time,'m');
         return;
     }
     qreal hour = time / 60.0;
     {
-//        attr = QString::number(hour,'f', 1) + tr(" h");
         attr = getSufix(hour,'h');
         return;
     }
@@ -739,7 +675,7 @@ void UkpmWidget::updateSumChart(int index)
     QList<QPointF> data;
     QPointF pit;
     int start_x = 0;
-    int max_y = 0;
+    float max_y = 0;
     if(index == CHARGE)
     {
         sumType = GPM_STATS_CHARGE_DATA_VALUE;
@@ -758,13 +694,13 @@ void UkpmWidget::updateSumChart(int index)
         foreach(pit, list)
         {
             data.append(QPointF(start_x++,pit.x()));
-            if(max_y < abs(pit.x()))
-                max_y = abs(pit.x());
+            if(max_y < fabs(pit.x()))
+                max_y = fabs(pit.x());
         }
         sumSeries->replace(data);
         sumSpline->replace(data);
         y->setTitleText(tr("adjust factor"));
-        y->setRange(-max_y,max_y);
+        y->setRange(-2.0,2.0);
         y->setLabelFormat("%.1f");
         x->setTitleText(tr("battery power"));
         x->setRange(0,100);
@@ -820,13 +756,13 @@ void UkpmWidget::updateSumChart(int index)
         foreach(pit, list)
         {
             data.append(QPointF(start_x++,pit.x()));
-            if(max_y < abs(pit.x()))
-                max_y = abs(pit.x());
+            if(max_y < fabs(pit.x()))
+                max_y = fabs(pit.x());
         }
         sumSeries->replace(data);
         sumSpline->replace(data);
         y->setTitleText(tr("adjust factor"));
-        y->setRange(-max_y,max_y);
+        y->setRange(-1.0,1.0);
         y->setLabelFormat("%.1f");
         x->setTitleText(tr("battery power"));
         x->setRange(0,100);
@@ -918,7 +854,6 @@ void UkpmWidget::updateHisType(int index)
             argument = variant.value<QDBusArgument>();
             argument >> listQDBus;
             size = listQDBus.size();
-            qDebug()<<size;
             for(uint i = 0; i< size; i++)
             {
                 if(listQDBus[i].state == 0)
@@ -932,8 +867,6 @@ void UkpmWidget::updateHisType(int index)
             qDebug()<<"error of qdbus reply";
 
         }
-
-        qDebug()<< list.size();
         hisSeries->replace(list);
         hisSpline->replace(list);
         axisY->setTitleText(tr("Rate"));
@@ -964,7 +897,6 @@ void UkpmWidget::updateHisType(int index)
             argument = variant.value<QDBusArgument>();
             argument >> listQDBus;
             size = listQDBus.size();
-            qDebug()<<size;
             for(uint i = 0; i< size; i++)
             {
                 if(listQDBus[i].state == 0)
@@ -978,8 +910,6 @@ void UkpmWidget::updateHisType(int index)
             qDebug()<<"error of qdbus reply";
 
         }
-
-        qDebug()<< list.size();
         hisSeries->replace(list);
         hisSpline->replace(list);
         axisY->setTitleText(tr("Charge"));
@@ -1010,7 +940,6 @@ void UkpmWidget::updateHisType(int index)
             argument = variant.value<QDBusArgument>();
             argument >> listQDBus;
             size = listQDBus.size();
-            qDebug()<<size;
             for(uint i = 0; i< size; i++)
             {
                 if(listQDBus[i].state == 0)
@@ -1026,7 +955,6 @@ void UkpmWidget::updateHisType(int index)
         else {
             qDebug()<<"error of qdbus reply";
         }
-        qDebug()<< list.size();
         hisSeries->replace(list);
         hisSpline->replace(list);
         axisY->setTitleText(tr("Predict Time"));
@@ -1054,7 +982,6 @@ void UkpmWidget::updateHisType(int index)
             argument = variant.value<QDBusArgument>();
             argument >> listQDBus;
             size = listQDBus.size();
-            qDebug()<<size;
             for(uint i = 0; i< size; i++)
             {
                 if(listQDBus[i].state == 0)
@@ -1070,8 +997,6 @@ void UkpmWidget::updateHisType(int index)
         else {
             qDebug()<<"error of qdbus reply";
         }
-
-        qDebug()<< list.size();
         hisSeries->replace(list);
         hisSpline->replace(list);
         axisY->setTitleText(tr("Predict Time"));
@@ -1090,7 +1015,6 @@ void UkpmWidget::updateHisType(int index)
         axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
     }
     settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
-
 }
 
 QString UkpmWidget::getWidgetAxis(uint value)
@@ -1282,26 +1206,8 @@ void UkpmWidget::onBtrPageChanged(int index)
     qDebug()<<"btr page number is:"<< index;
     if(0 == index)
     {
-    //jiangh
-    getBtrDetail();
-//    detailBTRTable->itemAt(0,1)->setData(Qt::EditRole,btrDetailData.Device);
-//    detailBTRTable->itemAt(1,1)->setData(Qt::EditRole,btrDetailData.Type);
-//    detailBTRTable->itemAt(2,1)->setData(Qt::EditRole,btrDetailData.Vendor);
-//    detailBTRTable->itemAt(3,1)->setData(Qt::EditRole,btrDetailData.Model);
-//    detailBTRTable->itemAt(4,1)->setData(Qt::EditRole,btrDetailData.PowerSupply);
-//    detailBTRTable->itemAt(5,1)->setData(Qt::EditRole,btrDetailData.Refresh);
-//    detailBTRTable->itemAt(6,1)->setData(Qt::EditRole,btrDetailData.IsPresent);
-//    detailBTRTable->itemAt(7,1)->setData(Qt::EditRole,btrDetailData.IsRechargeable);
-//    detailBTRTable->itemAt(8,1)->setData(Qt::EditRole,btrDetailData.State);
-//    detailBTRTable->itemAt(9,1)->setData(Qt::EditRole,btrDetailData.Energy);
-//    detailBTRTable->itemAt(10,1)->setData(Qt::EditRole,btrDetailData.EnergyFull);
-//    detailBTRTable->itemAt(11,1)->setData(Qt::EditRole,btrDetailData.EnergyFullDesign);
-//    detailBTRTable->itemAt(12,1)->setData(Qt::EditRole,btrDetailData.EnergyRate);
-//    detailBTRTable->itemAt(13,1)->setData(Qt::EditRole,btrDetailData.Voltage);
-//    detailBTRTable->itemAt(14,1)->setData(Qt::EditRole,btrDetailData.TimeToFull);
-//    detailBTRTable->itemAt(15,1)->setData(Qt::EditRole,btrDetailData.TimeToEmpty);
-//    detailBTRTable->itemAt(16,1)->setData(Qt::EditRole,btrDetailData.Percentage);
-//    detailBTRTable->itemAt(17,1)->setData(Qt::EditRole,btrDetailData.Capacity);
+        //jiangh
+        getBtrDetail();
         detailBTRTable->item(1,1)->setText(btrDetailData.Type);
         detailBTRTable->item(2,1)->setText(btrDetailData.Vendor);
         detailBTRTable->item(3,1)->setText(btrDetailData.Model);
@@ -1501,7 +1407,7 @@ void UkpmWidget::getBtrDetail()
     }
 }
 
-void UkpmWidget::getAll(BTRDetail *dc)
+void UkpmWidget::getAll(DEV *dc)
 {
     QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",batterySvr,
             "org.freedesktop.DBus.Properties","GetAll");
@@ -1514,11 +1420,9 @@ void UkpmWidget::getAll(BTRDetail *dc)
         QMap<QString,QVariant> map;
         dbusArg >> map;
 
-//        long time = map.value(QString("UpdateTime")).toLongLong();
-
-        dc->Type = (map.value(QString("Type")).toInt()==2) ? QString("Notebook battery") : QString("other");
+        dc->Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
         dc->Model = map.value(QString("Model")).toString();
-        dc->Device = QString("battery-") + map.value(QString("NativePath")).toString();
+        dc->Device = map.value(QString("NativePath")).toString();
         dc->Vendor = map.value(QString("Vendor")).toString();
         dc->Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
         dc->Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
@@ -1526,13 +1430,14 @@ void UkpmWidget::getAll(BTRDetail *dc)
         dc->EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
         dc->EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
         dc->EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-        dc->IsPresent = (map.value(QString("IsPresent")).toBool()) ? QString("Yes") : QString("No");
-        dc->IsRechargeable = (map.value(QString("IsRechargeable")).toBool()) ? QString("Yes") : QString("No");
-        dc->Percentage = QString::number(map.value(QString("Percentage")).toDouble())+"%";
-        dc->State = (map.value(QString("State")).toLongLong())==2?QString("Charging") : QString("Discharging");
-        dc->TimeToEmpty= QString::number(map.value(QString("TimeToEmpty")).toLongLong() / 3600.0, 'f', 1) + " h";
-        dc->TimeToFull= QString::number(map.value(QString("TimeToFull")).toLongLong() / 3600.0, 'f', 1) + " h";
-        dc->Voltage = QString::number(map.value(QString("Voltage")).toLongLong()) + " V";
+        dc->IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
+        dc->IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
+        dc->PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
+        dc->Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
+        dc->Online = boolToString(map.value(QString("Online")).toBool());
+        calcTime(dc->TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
+        calcTime(dc->TimeToFull, map.value(QString("TimeToFull")).toLongLong());
+        dc->Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
 
     }
     else {

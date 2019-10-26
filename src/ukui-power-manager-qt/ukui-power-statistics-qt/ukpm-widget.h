@@ -137,10 +137,9 @@ public:
     QList<QPointF> setdata(); //设置图表数据的函数接口
     void getDcDetail();
     void getBtrDetail();
-    void getAll(BTRDetail *dc);
+    void getAll(DEV *dc);
     void putAttributes(QMap<QString, QVariant> &map);
     void calcTime(QString &attr, uint time);
-    void initBtrDetail(QString btr);
     void getDevices();
     void setupDcUI();
     void setupBtrUI();
