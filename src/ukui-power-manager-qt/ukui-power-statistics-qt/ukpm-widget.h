@@ -1,6 +1,7 @@
 #ifndef UKPM_WIDGET_H
 #define UKPM_WIDGET_H
 
+#include <QTimer>
 #include <QMap>
 #include <QList>
 #include <QProcess>
@@ -222,6 +223,7 @@ public Q_SLOTS:
     void acPropertiesChanged(QDBusMessage msg);
     void onListChanged(int row);
     void onBtrPageChanged(int index);
+    void handleTimeout();
 protected:
     void minimumSize();
 public:
@@ -230,7 +232,7 @@ public:
     DEV btrDetailData;
     QListWidget *listWidget;
     QTabWidget *tabWidgetDC, *tabWidgetBTR;
-    QStackedWidget *stackedWidget;
+    QStackedWidget *stackedWidget, *hisStack, *sumStack;
 
     HISTYPE mHISTYPE;
     SUMTYPE mSUMTYPE;
@@ -271,7 +273,7 @@ public:
     QString batterySvr,acSvr;
     bool iconflag;
     QGSettings *settings;
-
+    QTimer timer;
 };
 
 #endif // UKPM_WIDGET_H

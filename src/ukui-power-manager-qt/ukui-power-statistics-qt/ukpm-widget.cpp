@@ -405,7 +405,7 @@ void UkpmWidget::setupDcUI()
     QStringList strList;
     strList << tr("attribute") << tr("value");
     detailDcTable->setHorizontalHeaderLabels(strList);
-
+    detailDcTable->setShowGrid(false);
     detailDcTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     detailDcTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
     detailDcTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
@@ -440,7 +440,7 @@ void UkpmWidget::setupBtrUI()
     detailBTRTable->setHorizontalHeaderLabels(strList);
     detailBTRTable->verticalHeader()->setVisible(false);
     detailBTRTable->horizontalHeader()->setStretchLastSection(true);
-
+    detailBTRTable->setShowGrid(false);
     detailBTRTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     detailBTRTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
@@ -538,9 +538,12 @@ void UkpmWidget::setSumTab()
     sumDataBox = new QCheckBox(tr("show datapoint"),tabSumBTR);
 
     QHBoxLayout *bottomLayout = new QHBoxLayout;
-    QFormLayout *topLayout = new QFormLayout;
-    topLayout->addRow(graphicType,sumTypeCombox);
-
+    QHBoxLayout *topLayout = new QHBoxLayout;
+    QFormLayout *topFormLayout = new QFormLayout;
+    QVBoxLayout *topchild = new QVBoxLayout;
+    topFormLayout->addRow(graphicType,sumTypeCombox);
+    topLayout->addLayout(topFormLayout,1);
+    topLayout->addLayout(topchild,1);
     sumChart = new QChart;
     x = new QValueAxis;
     y = new QValueAxis;
@@ -558,16 +561,26 @@ void UkpmWidget::setSumTab()
     sumSpline->setPointsVisible(true);
 
     sumChart->legend()->hide();
-    sumChart->setAnimationOptions(QChart::SeriesAnimations);
+//    sumChart->setAnimationOptions(QChart::SeriesAnimations);
 
     sumChartView = new QChartView(sumChart);
     sumChartView->setRenderHint(QPainter::Antialiasing);
 
-    bottomLayout->addWidget(sumCurveBox);
-    bottomLayout->addWidget(sumDataBox);
+    QVBoxLayout *botchild = new QVBoxLayout;
+    bottomLayout->addWidget(sumCurveBox,1);
+    bottomLayout->addWidget(sumDataBox,1);
+    bottomLayout->addLayout(botchild,1);
     QVBoxLayout *vLayout = new QVBoxLayout;
+
+    sumStack = new QStackedWidget;
+    QLabel *nodata = new QLabel;
+    nodata->setText(tr("no data to show."));
+    nodata->setAlignment(Qt::AlignCenter);
+    sumStack->addWidget(nodata);
+    sumStack->addWidget(sumChartView);
+
     vLayout->addLayout(topLayout);
-    vLayout->addWidget(sumChartView);
+    vLayout->addWidget(sumStack);
     vLayout->addLayout(bottomLayout);
     tabSumBTR->setLayout(vLayout);
 
@@ -654,13 +667,18 @@ void UkpmWidget::setHistoryTab()
     hisSpline->setPointsVisible(true);
 
     hisChart->legend()->hide();
-    hisChart->setAnimationOptions(QChart::SeriesAnimations);
+//    hisChart->setAnimationOptions(QChart::SeriesAnimations);
     hisChartView = new QChartView(hisChart);
     hisChartView->setRenderHint(QPainter::Antialiasing);
-
     QVBoxLayout *vLayout = new QVBoxLayout;
+    hisStack = new QStackedWidget;
+    QLabel *nodata = new QLabel;
+    nodata->setText(tr("no data to show."));
+    nodata->setAlignment(Qt::AlignCenter);
+    hisStack->addWidget(nodata);
+    hisStack->addWidget(hisChartView);
     vLayout->addLayout(topLayout);
-    vLayout->addWidget(hisChartView);
+    vLayout->addWidget(hisStack);
     vLayout->addLayout(bottomLayout);
     tabHisBTR->setLayout(vLayout);
 }
@@ -679,6 +697,8 @@ void UkpmWidget::updateSumChart(int index)
     if(index == CHARGE)
     {
         sumType = GPM_STATS_CHARGE_DATA_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
+
         msg << "charging";
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -691,26 +711,35 @@ void UkpmWidget::updateSumChart(int index)
             qDebug()<<"error of qdbus reply";
 
         }
+        if(list.isEmpty())
+        {
+            sumStack->setCurrentIndex(0);
+            return;
+        }
         foreach(pit, list)
         {
             data.append(QPointF(start_x++,pit.x()));
             if(max_y < fabs(pit.x()))
                 max_y = fabs(pit.x());
         }
+        max_y = ceil(max_y);
         sumSeries->replace(data);
         sumSpline->replace(data);
         y->setTitleText(tr("adjust factor"));
-        y->setRange(-2.0,2.0);
+        y->setRange(-max_y,+max_y);
         y->setLabelFormat("%.1f");
         x->setTitleText(tr("battery power"));
         x->setRange(0,100);
         x->setLabelFormat("%d%");
         x->setTickCount(10);
         y->setTickCount(10);
+
     }
     else if(index == CHARGE_ACCURENCY)
     {
         sumType = GPM_STATS_CHARGE_ACCURACY_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
+
         msg << "charging";
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -721,6 +750,11 @@ void UkpmWidget::updateSumChart(int index)
         else {
             qDebug()<<"error of qdbus reply";
 
+        }
+        if(list.isEmpty())
+        {
+            sumStack->setCurrentIndex(0);
+            return;
         }
         foreach(pit, list)
         {
@@ -742,6 +776,8 @@ void UkpmWidget::updateSumChart(int index)
     else if(index == DISCHARGING)
     {
         sumType = GPM_STATS_DISCHARGE_DATA_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
+
         msg << "discharging";
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -753,16 +789,22 @@ void UkpmWidget::updateSumChart(int index)
             qDebug()<<"error of qdbus reply";
 
         }
+        if(list.isEmpty())
+        {
+            sumStack->setCurrentIndex(0);
+            return;
+        }
         foreach(pit, list)
         {
             data.append(QPointF(start_x++,pit.x()));
             if(max_y < fabs(pit.x()))
                 max_y = fabs(pit.x());
         }
+        max_y = ceil(max_y);
         sumSeries->replace(data);
         sumSpline->replace(data);
         y->setTitleText(tr("adjust factor"));
-        y->setRange(-1.0,1.0);
+        y->setRange(-max_y,+max_y);
         y->setLabelFormat("%.1f");
         x->setTitleText(tr("battery power"));
         x->setRange(0,100);
@@ -773,6 +815,8 @@ void UkpmWidget::updateSumChart(int index)
     else if(index == DISCHARGING_ACCURENCY)
     {
         sumType = GPM_STATS_DISCHARGE_ACCURACY_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
+
         msg << "discharging";
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -783,6 +827,11 @@ void UkpmWidget::updateSumChart(int index)
         else {
             qDebug()<<"error of qdbus reply";
 
+        }
+        if(list.isEmpty())
+        {
+            sumStack->setCurrentIndex(0);
+            return;
         }
         foreach(pit, list)
         {
@@ -801,7 +850,7 @@ void UkpmWidget::updateSumChart(int index)
         x->setTickCount(10);
         y->setTickCount(10);
     }
-    settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
+    sumStack->setCurrentIndex(1);
 
 }
 void UkpmWidget::onExitButtonClicked(bool)
@@ -832,7 +881,6 @@ void UkpmWidget::updateHisType(int index)
             "org.freedesktop.UPower.Device","GetHistory");
     QList<QPointF> list;
     QList<StructUdu> listQDBus;
-    QDBusVariant item;
     QVariant variant;
     uint size;
     QPointF temp;
@@ -840,12 +888,15 @@ void UkpmWidget::updateHisType(int index)
     mHISTYPE = (HISTYPE)index;
     struct timeval tv;
     gettimeofday(&tv,NULL);
-//    uint32_t prd = (uint32_t)tv.tv_sec;
-    int max_y = 0;
-//    int min_y = 0;
+    uint max_y = 0;
+    uint min_y = 0;
+    bool first_run = true;
+    resolution = 150;
     if(index == RATE)
     {
         hisType = GPM_HISTORY_RATE_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
+
         msg << "rate" << timeSpan << resolution;
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -854,21 +905,26 @@ void UkpmWidget::updateHisType(int index)
             argument = variant.value<QDBusArgument>();
             argument >> listQDBus;
             size = listQDBus.size();
+            qDebug()<<"size="<<size<<"span="<<timeSpan;
             for(uint i = 0; i< size; i++)
             {
                 if(listQDBus[i].state == 0)
                     continue;
-                temp.setX(listQDBus[0].time - listQDBus[i].time);
+                temp.setX(tv.tv_sec - listQDBus[i].time);
                 temp.setY(listQDBus[i].value);
                 list.append(temp);
             }
         }
         else {
             qDebug()<<"error of qdbus reply";
-
         }
-        hisSeries->replace(list);
-        hisSpline->replace(list);
+        if(list.isEmpty())
+        {
+            hisStack->setCurrentIndex(0);
+            return;
+        }
+//        hisSeries->replace(list);
+//        hisSpline->replace(list);
         axisY->setTitleText(tr("Rate"));
 
         QStringList labels = axisY->categoriesLabels();
@@ -885,10 +941,14 @@ void UkpmWidget::updateHisType(int index)
             axisY->append(str,i*1.0);
         }
         axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
     }
     else if(index == VOLUME)
     {
         hisType = GPM_HISTORY_CHARGE_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
+
         msg << "charge" << timeSpan << resolution;
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -901,17 +961,20 @@ void UkpmWidget::updateHisType(int index)
             {
                 if(listQDBus[i].state == 0)
                     continue;
-                temp.setX(listQDBus[0].time - listQDBus[i].time);
+                temp.setX(tv.tv_sec - listQDBus[i].time);
                 temp.setY(listQDBus[i].value);
                 list.append(temp);
             }
         }
         else {
             qDebug()<<"error of qdbus reply";
-
         }
-        hisSeries->replace(list);
-        hisSpline->replace(list);
+        if(list.isEmpty())
+        {
+            hisStack->setCurrentIndex(0);
+            return;
+        }
+
         axisY->setTitleText(tr("Charge"));
 
         QStringList labels = axisY->categoriesLabels();
@@ -928,10 +991,14 @@ void UkpmWidget::updateHisType(int index)
             axisY->append(str,i*10);
         }
         axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
     }
     else if(index == CHARGE_DURATION)
     {
         hisType = GPM_HISTORY_TIME_FULL_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
+
         msg << "time-full" << timeSpan << resolution;
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -944,9 +1011,16 @@ void UkpmWidget::updateHisType(int index)
             {
                 if(listQDBus[i].state == 0)
                     continue;
-                temp.setX(listQDBus[0].time - listQDBus[i].time);
+                temp.setX(tv.tv_sec - listQDBus[i].time);
                 temp.setY(listQDBus[i].value);
-                if(max_y < temp.y())   //||(min_y>temp.x())
+                if(first_run)
+                {
+                    min_y = temp.y();
+                    first_run = false;
+                }
+                if(min_y > temp.y())
+                    min_y = temp.y();
+                if(max_y < temp.y())
                     max_y = temp.y();
 
                 list.append(temp);
@@ -955,25 +1029,37 @@ void UkpmWidget::updateHisType(int index)
         else {
             qDebug()<<"error of qdbus reply";
         }
-        hisSeries->replace(list);
-        hisSpline->replace(list);
+        if(list.isEmpty())
+        {
+            hisStack->setCurrentIndex(0);
+            return;
+        }
+
         axisY->setTitleText(tr("Predict Time"));
         QStringList labels = axisY->categoriesLabels();
         foreach (QString str, labels) {
             axisY->remove(str);
         }
-        axisY->setMin(0);
+        min_y = floor(min_y/600.0) * 600;
+        max_y = ceil(max_y/600.0) * 600;
+
+        axisY->setMin(min_y);
         axisY->setMax(max_y);
-        axisY->setStartValue(0);
+        axisY->setStartValue(min_y);
         for(int i = 0; i < 11; i++)
         {
-            axisY->append(getWidgetAxis(i*max_y/10),i*max_y/10);
+            axisY->append(getWidgetAxis(min_y+i*(max_y-min_y)/10),min_y+i*(max_y-min_y)/10);
         }
         axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
     }
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     else if(index == DISCHARGING_DURATION)
     {
         hisType = GPM_HISTORY_TIME_EMPTY_VALUE;
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
+
         msg << "time-empty" << timeSpan << resolution;
         QDBusMessage res = QDBusConnection::systemBus().call(msg);
         if(res.type() == QDBusMessage::ReplyMessage)
@@ -982,13 +1068,23 @@ void UkpmWidget::updateHisType(int index)
             argument = variant.value<QDBusArgument>();
             argument >> listQDBus;
             size = listQDBus.size();
+//            qDebug()<<"timespan:"<<timeSpan<<size;
+
             for(uint i = 0; i< size; i++)
             {
                 if(listQDBus[i].state == 0)
                     continue;
-                temp.setX(listQDBus[0].time - listQDBus[i].time);
+
+                temp.setX(tv.tv_sec - listQDBus[i].time);
                 temp.setY(listQDBus[i].value);
-                if(max_y < temp.y())   //||(min_y>temp.x())
+                if(first_run)
+                {
+                    min_y = temp.y();
+                    first_run = false;
+                }
+                if(min_y > temp.y())
+                    min_y = temp.y();
+                if(max_y < temp.y())
                     max_y = temp.y();
 
                 list.append(temp);
@@ -997,25 +1093,37 @@ void UkpmWidget::updateHisType(int index)
         else {
             qDebug()<<"error of qdbus reply";
         }
-        hisSeries->replace(list);
-        hisSpline->replace(list);
+        if(list.isEmpty())
+        {
+            hisStack->setCurrentIndex(0);
+            return;
+        }
+
         axisY->setTitleText(tr("Predict Time"));
 
         QStringList labels = axisY->categoriesLabels();
         foreach (QString str, labels) {
             axisY->remove(str);
         }
-        axisY->setMin(0);
+
+        min_y = floor(min_y/600.0) * 600;
+        max_y = ceil(max_y/600.0) * 600;
+
+        axisY->setMin(min_y);
         axisY->setMax(max_y);
-        axisY->setStartValue(0);
+        axisY->setStartValue(min_y);
+
         for(int i = 0; i < 11; i++)
         {
-            axisY->append(getWidgetAxis(i*max_y/10),i*max_y/10);
+            axisY->append(getWidgetAxis(min_y+i*(max_y-min_y)/10),min_y+i*(max_y-min_y)/10);
         }
         axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
     }
-    settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
+    hisStack->setCurrentIndex(1);
 }
+
 
 QString UkpmWidget::getWidgetAxis(uint value)
 {
@@ -1198,6 +1306,19 @@ void UkpmWidget::connectSlots()
     Q_EMIT sumDataBox->clicked(checked);
     Q_EMIT tabWidgetBTR->currentChanged(page);
     listWidget->setCurrentRow(parseArguments());
+    timer.setInterval(15000);
+    connect(&timer,SIGNAL(timeout()),this,SLOT(handleTimeout()));
+    timer.start();
+}
+
+void UkpmWidget::handleTimeout()
+{
+    int number = tabWidgetBTR->currentIndex();
+    if(1==number)
+    {
+        updateHisType(mHISTYPE);
+
+    }
 }
 
 void UkpmWidget::onBtrPageChanged(int index)
