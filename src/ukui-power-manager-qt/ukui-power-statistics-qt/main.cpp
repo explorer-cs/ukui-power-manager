@@ -12,9 +12,15 @@ int main(int argc, char *argv[])
         return 0;
     }
     QApplication a(argc, argv);
+    QStringList arguments = QApplication::arguments();
+    if(arguments.size() < 3)
+	    return 0;
+    QString dev = arguments.at(2);
+    if(!(dev.contains("battery")) && !(dev.contains("line_power")))
+	    return 0;
     QString locale = QLocale::system().name();
     QTranslator translator;
-    QString qmfile = QString(WORKING_DIRECTORY"/%1.qm").arg(locale);
+    QString qmfile = QString(":/locale/%1.qm").arg(locale);
     translator.load(qmfile);
     a.installTranslator(&translator);
     a.setWindowIcon(QIcon(":/pro.png"));

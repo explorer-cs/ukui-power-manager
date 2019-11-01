@@ -1,6 +1,7 @@
 #ifndef UKPM_WIDGET_H
 #define UKPM_WIDGET_H
 
+#include <math.h>
 #include <QTimer>
 #include <QMap>
 #include <QList>

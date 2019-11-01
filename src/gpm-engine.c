@@ -979,11 +979,13 @@ gpm_engine_device_changed_cb (UpClient *client, UpDevice *device, GpmEngine *eng
 
         //kobe
         gpointer data = NULL;
+	gdouble percentage;
 	gint64 TimeToFull;
 	/* get device properties */
 	g_object_get (device,
 		      "kind", &kind,
-			  "time-to-full",&TimeToFull,
+		      "time-to-full",&TimeToFull,
+		      "percentage",&percentage,
 		      NULL);
 
 	/* if battery then use composite device to cope with multiple batteries */
@@ -1073,7 +1075,7 @@ gpm_engine_device_changed_cb (UpClient *client, UpDevice *device, GpmEngine *eng
 		g_object_set_data (G_OBJECT(device), "engine-warning-old", GUINT_TO_POINTER(warning));
         }*/
 	//jiangh
-	static gboolean notice_once = true;
+	static gboolean notice_once = TRUE;
 	if ( (TimeToFull == 0) && (notice_once) && (percentage < 3.0) )
 	{
 		g_signal_emit_by_name(engine,"close-notify");
