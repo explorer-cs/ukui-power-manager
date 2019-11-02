@@ -14,10 +14,16 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     QStringList arguments = QApplication::arguments();
     if(arguments.size() < 3)
+    {
+	    qDebug()<<"arguments is less than 3";
 	    return 0;
+    }
     QString dev = arguments.at(2);
     if(!(dev.contains("battery")) && !(dev.contains("line_power")))
+    {
+	    qDebug()<<"device not supported now, try battery";
 	    return 0;
+    }
     QString locale = QLocale::system().name();
     QTranslator translator;
     QString qmfile = QString(":/locale/%1.qm").arg(locale);
