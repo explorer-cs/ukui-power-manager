@@ -1,6 +1,7 @@
 #ifndef UKPM_WIDGET_H
 #define UKPM_WIDGET_H
 
+#include "titlewidget.h"
 #include <math.h>
 #include <QTimer>
 #include <QMap>
@@ -47,6 +48,7 @@
 #include "gsettings.h"
 #include <QCategoryAxis>
 #include "customtype.h"
+#include "statistics-common.h"
 
 #define WORKING_DIRECTORY "."
 #define DBUS_SERVICE "org.freedesktop.UPower"
@@ -77,29 +79,7 @@ struct DCDetail
     QString Online;
 };
 
-struct DEV
-{
-    QString Device;
-    QString Type;
-    QString PowerSupply;
-    QString Online;
-    QString Vendor;
-    QString Model;
-    QString Refresh;
-    QString Energy;
-    QString EnergyEmpty;
-    QString EnergyFull;
-    QString EnergyFullDesign;
-    QString EnergyRate;
-    QString IsPresent;
-    QString IsRechargeable;
-    QString Percentage;
-    QString State;
-    QString TimeToEmpty;
-    QString TimeToFull;
-    QString Voltage;
-    QString Capacity;
-};
+
 struct BTRDetail
 {
     QString Device;
@@ -146,7 +126,7 @@ public:
     void setupDcUI();
     void setupBtrUI();
     void initUI();
-    void addNewUI(QDBusObjectPath &path);
+    void addNewUI(QDBusObjectPath &path, UpDeviceKind newKind);
     int parseArguments();
     QString getWidgetAxis(uint value);
     void setupBtrDetail();
@@ -172,29 +152,29 @@ public:
     {
         switch (type_enum) {
         case UP_DEVICE_KIND_LINE_POWER:
-            return tr("line-power");
+            return ("line-power");
         case UP_DEVICE_KIND_BATTERY:
-            return tr("battery");
+            return ("battery");
         case UP_DEVICE_KIND_UPS:
-            return tr("ups");
+            return ("ups");
         case UP_DEVICE_KIND_MONITOR:
-            return tr("monitor");
+            return ("monitor");
         case UP_DEVICE_KIND_MOUSE:
-            return tr("mouse");
+            return ("mouse");
         case UP_DEVICE_KIND_KEYBOARD:
-            return tr("keyboard");
+            return ("keyboard");
         case UP_DEVICE_KIND_PDA:
-            return tr("pda");
+            return ("pda");
         case UP_DEVICE_KIND_PHONE:
-            return tr("phone");
+            return ("phone");
         case UP_DEVICE_KIND_MEDIA_PLAYER:
-            return tr("media-player");
+            return ("media-player");
         case UP_DEVICE_KIND_TABLET:
-            return tr("tablet");
+            return ("tablet");
         case UP_DEVICE_KIND_COMPUTER:
-            return tr("computer");
+            return ("computer");
         default:
-            return tr("unknown");
+            return ("unknown");
         }
     }
 
@@ -207,8 +187,8 @@ public Q_SLOTS:
     void onShow();
     void showHisDataPoint(bool flag);
     void showSumDataPoint(bool flag);
-    void onHelpButtonClicked(bool);
-    void onExitButtonClicked(bool);
+    void onHelpButtonClicked();
+    void onExitButtonClicked();
     void updateHisType(int index);
     void drawSumSpineline(bool flag);
     void drawHisSpineline(bool flag);
@@ -275,6 +255,9 @@ public:
     bool iconflag;
     QGSettings *settings;
     QTimer timer;
+    TitleWidget *title;
+    QColor plotcolor;
+
 };
 
 #endif // UKPM_WIDGET_H

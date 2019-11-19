@@ -9,6 +9,8 @@ QT_INSTALL_DIR:=$(shell pwd)/debian/tmp/
 override_dh_install:
 	mkdir -p $(QT_INSTALL_DIR) && \
 	make install INSTALL_ROOT=$(QT_INSTALL_DIR) -C src/ukui-power-manager-qt/ukui-power-statistics-qt/build
+	make install INSTALL_ROOT=$(QT_INSTALL_DIR) -C src/ukui-power-manager-qt/powerpolicy/build
+	make install INSTALL_ROOT=$(QT_INSTALL_DIR) -C src/ukui-power-manager-qt/controller/build
 	dh_install	
 
 override_dh_missing:
@@ -32,3 +34,9 @@ override_dh_auto_build:
 	mkdir -p src/ukui-power-manager-qt/ukui-power-statistics-qt/build
 	cd src/ukui-power-manager-qt/ukui-power-statistics-qt/build && qmake ../
 	make -C src/ukui-power-manager-qt/ukui-power-statistics-qt/build
+	mkdir -p src/ukui-power-manager-qt/controller/build
+	cd src/ukui-power-manager-qt/controller/build && qmake ../
+	make -C src/ukui-power-manager-qt/controller/build
+	mkdir -p src/ukui-power-manager-qt/powerpolicy/build
+	cd src/ukui-power-manager-qt/powerpolicy/build && qmake ../
+	make -C src/ukui-power-manager-qt/powerpolicy/build

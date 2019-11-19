@@ -127,6 +127,28 @@ typedef enum {
     GPM_ACTION_POLICY_NOTHING
 } GpmActionPolicy;
 
-
+struct DEV
+{
+    QString Device;
+    QString Type;
+    QString PowerSupply;
+    QString Online;
+    QString Vendor;
+    QString Model;
+    QString Refresh;
+    QString Energy;
+    QString EnergyEmpty;
+    QString EnergyFull;
+    QString EnergyFullDesign;
+    QString EnergyRate;
+    QString IsPresent;
+    QString IsRechargeable;
+    QString Percentage;
+    QString State;
+    QString TimeToEmpty;
+    QString TimeToFull;
+    QString Voltage;
+    QString Capacity;
+};
 
 #endif // STATISTICSCOMMON_H

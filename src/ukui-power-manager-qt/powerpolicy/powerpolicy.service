@@ -1,0 +1,13 @@
+[Unit]
+Description=power setting of tlp
+After=upower.service
+
+[Service]
+Type=dbus
+Restart=always
+RestartSec=0
+BusName=tlp.local.manager
+ExecStart=/usr/bin/powerpolicy
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,6 @@
 #include "ukpm-widget.h"
 #include "customtype.h"
 #include "sys/time.h"
-#include "statistics-common.h"
 
 #define GPM_HISTORY_RATE_TEXT			"Rate"
 #define GPM_HISTORY_CHARGE_TEXT			"Charge"
@@ -33,6 +32,13 @@
 UkpmWidget::UkpmWidget(QWidget *parent)
     : QWidget(parent)
 {
+    QFile file(":/resource/ui.qss");
+    file.open(QFile::ReadOnly);
+    QString styleSheet = QString::fromLatin1(file.readAll());
+    qApp->setStyleSheet(styleSheet);
+    plotcolor.setNamedColor("#F1F1F1");
+    plotcolor.setAlpha(255);
+
     settings = new QGSettings(GPM_SETTINGS_SCHEMA);
 
     initUI();
@@ -174,7 +180,7 @@ void UkpmWidget::getDevices()
                 label =device_kind_to_localised_text((UpDeviceKind)kindEnum,1);
             if(kindEnum == UP_DEVICE_KIND_LINE_POWER || kindEnum == UP_DEVICE_KIND_BATTERY || kindEnum == UP_DEVICE_KIND_COMPUTER)
             {
-                item = new QListWidgetItem(QIcon(":/"+icon),label);
+                item = new QListWidgetItem(QIcon(":/images/"+icon+".png"),label);
                 listItem.insert(deviceNames.at(i),item);
                 listWidget->insertItem(i,item);
             }
@@ -235,6 +241,9 @@ void UkpmWidget::getDevices()
         memcpy(&dcDetailData,&devices.at(1),sizeof(DEV));
     	setupDcUI();
     }
+
+//    setupBtrUI();
+//    setupDcUI();
 
 }
 
@@ -362,36 +371,107 @@ void UkpmWidget::onActivatedIcon(QSystemTrayIcon::ActivationReason reason)
 
 }
 
-void UkpmWidget::addNewUI(QDBusObjectPath &path)
+void UkpmWidget::addNewUI(QDBusObjectPath &path, UpDeviceKind newKind)
 {
-    QTabWidget *tabWidgetDC = new QTabWidget();
-    QWidget *DetailDc = new QWidget();
-    tabWidgetDC->addTab(DetailDc,QString());
-    tabWidgetDC->setTabText(0,tr("Detail"));
-    stackedWidget->addWidget(tabWidgetDC);
-    widgetItem.insert(path,tabWidgetDC);
+    if(newKind == UP_DEVICE_KIND_LINE_POWER)
+    {
+        QTabWidget *tabWidgetDC = new QTabWidget();
+        QWidget *DetailDc = new QWidget();
+        tabWidgetDC->addTab(DetailDc,QString());
+        tabWidgetDC->setTabText(0,tr("Detail"));
+        stackedWidget->addWidget(tabWidgetDC);
+        widgetItem.insert(path,tabWidgetDC);
 
-    detailDcTable = new QTableWidget(4,2,DetailDc);
-    QStringList strList;
-    strList << tr("attribute") << tr("value");
-    detailDcTable->setHorizontalHeaderLabels(strList);
+        QTableWidget *detailDcTable = new QTableWidget(4,2,DetailDc);
+        QStringList strList;
+        strList << tr("attribute") << tr("value");
+        detailDcTable->setHorizontalHeaderLabels(strList);
 
-    detailDcTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    detailDcTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
-    detailDcTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
-    detailDcTable->setItem(2,0,new QTableWidgetItem(tr("PowerSupply")));
-    detailDcTable->setItem(3,0,new QTableWidgetItem(tr("Online")));
+        detailDcTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        detailDcTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
+        detailDcTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
+        detailDcTable->setItem(2,0,new QTableWidgetItem(tr("PowerSupply")));
+        detailDcTable->setItem(3,0,new QTableWidgetItem(tr("Online")));
 
-    detailDcTable->setItem(0,1,new QTableWidgetItem(dcDetailData.Device));
-    detailDcTable->setItem(1,1,new QTableWidgetItem(dcDetailData.Type));
-    detailDcTable->setItem(2,1,new QTableWidgetItem(dcDetailData.PowerSupply));
-    detailDcTable->setItem(3,1,new QTableWidgetItem(dcDetailData.Online));
-    detailDcTable->verticalHeader()->setVisible(false);
-    detailDcTable->horizontalHeader()->setStretchLastSection(true);
+        detailDcTable->setItem(0,1,new QTableWidgetItem(dcDetailData.Device));
+        detailDcTable->setItem(1,1,new QTableWidgetItem(dcDetailData.Type));
+        detailDcTable->setItem(2,1,new QTableWidgetItem(dcDetailData.PowerSupply));
+        detailDcTable->setItem(3,1,new QTableWidgetItem(dcDetailData.Online));
+        detailDcTable->verticalHeader()->setVisible(false);
+        detailDcTable->horizontalHeader()->setStretchLastSection(true);
 
-    QVBoxLayout *detailDcLayout = new QVBoxLayout;
-    detailDcLayout->addWidget(detailDcTable);
-    DetailDc->setLayout(detailDcLayout);
+        QVBoxLayout *detailDcLayout = new QVBoxLayout;
+        detailDcLayout->addWidget(detailDcTable);
+        DetailDc->setLayout(detailDcLayout);
+    }
+    else if(newKind == UP_DEVICE_KIND_BATTERY)
+    {
+        QTabWidget* tabWidgetBTR = new QTabWidget();
+        QWidget *detailBTR = new QWidget();
+        tabWidgetBTR->addTab(detailBTR,QString());
+        tabWidgetBTR->setTabText(0,tr("Detail"));
+        stackedWidget->addWidget(tabWidgetBTR);
+        QStringList strList;
+        strList << tr("attribute") << tr("value");
+        QTableWidget *detailBTRTable = new QTableWidget(18,2,detailBTR);
+        detailBTRTable->setHorizontalHeaderLabels(strList);
+        detailBTRTable->verticalHeader()->setVisible(false);
+        detailBTRTable->horizontalHeader()->setStretchLastSection(true);
+        detailBTRTable->setShowGrid(false);
+        detailBTRTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        detailBTRTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+
+        detailBTRTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
+        detailBTRTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
+        detailBTRTable->setItem(2,0,new QTableWidgetItem(tr("Vendor")));
+        detailBTRTable->setItem(3,0,new QTableWidgetItem(tr("Model")));
+        detailBTRTable->setItem(4,0,new QTableWidgetItem(tr("PowerSupply")));
+        detailBTRTable->setItem(5,0,new QTableWidgetItem(tr("Refresh")));
+        detailBTRTable->setItem(6,0,new QTableWidgetItem(tr("IsPresent")));
+        detailBTRTable->setItem(7,0,new QTableWidgetItem(tr("IsRechargeable")));
+        detailBTRTable->setItem(8,0,new QTableWidgetItem(tr("State")));
+        detailBTRTable->setItem(9,0,new QTableWidgetItem(tr("Energy")));
+        detailBTRTable->setItem(10,0,new QTableWidgetItem(tr("EnergyFull")));
+        detailBTRTable->setItem(11,0,new QTableWidgetItem(tr("EnergyFullDesign")));
+        detailBTRTable->setItem(12,0,new QTableWidgetItem(tr("EnergyRate")));
+        detailBTRTable->setItem(13,0,new QTableWidgetItem(tr("Voltage")));
+        detailBTRTable->setItem(14,0,new QTableWidgetItem(tr("TimeToFull")));
+        detailBTRTable->setItem(15,0,new QTableWidgetItem(tr("TimeToEmpty")));
+        detailBTRTable->setItem(16,0,new QTableWidgetItem(tr("Percentage")));
+        detailBTRTable->setItem(17,0,new QTableWidgetItem(tr("Capacity")));
+
+        detailBTRTable->setItem(0,1,new QTableWidgetItem(btrDetailData.Device));
+        detailBTRTable->setItem(1,1,new QTableWidgetItem(btrDetailData.Type));
+        detailBTRTable->setItem(2,1,new QTableWidgetItem(btrDetailData.Vendor));
+        detailBTRTable->setItem(3,1,new QTableWidgetItem(btrDetailData.Model));
+        detailBTRTable->setItem(4,1,new QTableWidgetItem(btrDetailData.PowerSupply));
+        detailBTRTable->setItem(5,1,new QTableWidgetItem(btrDetailData.Refresh));
+        detailBTRTable->setItem(6,1,new QTableWidgetItem(btrDetailData.IsPresent));
+        detailBTRTable->setItem(7,1,new QTableWidgetItem(btrDetailData.IsRechargeable));
+        detailBTRTable->setItem(8,1,new QTableWidgetItem(btrDetailData.State));
+        detailBTRTable->setItem(9,1,new QTableWidgetItem(btrDetailData.Energy));
+        detailBTRTable->setItem(10,1,new QTableWidgetItem(btrDetailData.EnergyFull));
+        detailBTRTable->setItem(11,1,new QTableWidgetItem(btrDetailData.EnergyFullDesign));
+        detailBTRTable->setItem(12,1,new QTableWidgetItem(btrDetailData.EnergyRate));
+        detailBTRTable->setItem(13,1,new QTableWidgetItem(btrDetailData.Voltage));
+        detailBTRTable->setItem(14,1,new QTableWidgetItem(btrDetailData.TimeToFull));
+        detailBTRTable->setItem(15,1,new QTableWidgetItem(btrDetailData.TimeToEmpty));
+        detailBTRTable->setItem(16,1,new QTableWidgetItem(btrDetailData.Percentage));
+        detailBTRTable->setItem(17,1,new QTableWidgetItem(btrDetailData.Capacity));
+        QVBoxLayout *detailBTRLayout = new QVBoxLayout;
+        detailBTRLayout->addWidget(detailBTRTable);
+        detailBTR->setLayout(detailBTRLayout);
+
+    }
+    else if(newKind == UP_DEVICE_KIND_COMPUTER)
+    {
+
+    }
+    else
+    {
+        ;
+    }
+
 }
 
 void UkpmWidget::setupDcUI()
@@ -406,6 +486,7 @@ void UkpmWidget::setupDcUI()
     strList << tr("attribute") << tr("value");
     detailDcTable->setHorizontalHeaderLabels(strList);
     detailDcTable->setShowGrid(false);
+    detailDcTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
     detailDcTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     detailDcTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
     detailDcTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
@@ -442,6 +523,7 @@ void UkpmWidget::setupBtrUI()
     detailBTRTable->horizontalHeader()->setStretchLastSection(true);
     detailBTRTable->setShowGrid(false);
     detailBTRTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    detailBTRTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
 
     detailBTRTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
     detailBTRTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
@@ -494,57 +576,78 @@ void UkpmWidget::setupBtrUI()
 void UkpmWidget::initUI()
 {
     QDesktopWidget *deskdop = QApplication::desktop();
-    resize(deskdop->width()/2,deskdop->height()/2);
+//    resize(deskdop->width()/2,deskdop->height()/2);
+    resize(900,580);
     move((deskdop->width() - this->width())/2, (deskdop->height() - this->height())/2);
-    setWindowFlags(windowFlags()&~Qt::WindowMaximizeButtonHint);
-    setWindowTitle(tr("Power Statistics"));
-
+//    setWindowFlags(windowFlags()&~Qt::WindowMaximizeButtonHint);
+//    setWindowTitle(tr("Power Statistics"));
+    setWindowFlags(Qt::FramelessWindowHint);
+//    setWindowFlags(Qt::FramelessWindowHint|Qt::WindowMinimizeButtonHint);
     QSplitter *mainsplitter = new QSplitter(Qt::Horizontal,this);//splittering into two parts
     listWidget = new QListWidget(mainsplitter);
+    listWidget->setObjectName("m_listWidget");
+    listWidget->setSpacing(10);
     stackedWidget =  new QStackedWidget(mainsplitter);
 
     mainsplitter->setStretchFactor(1,4);
+//    mainsplitter->setFrameStyle();
     QVBoxLayout *vlayout = new QVBoxLayout;
+    vlayout->setContentsMargins(5,0,40,0);
+    QFrame *header = new QFrame(this);
+    header->setFixedHeight(TITLE_HEIGHT);
+    header->setWindowFlags(Qt::FramelessWindowHint);
+    vlayout->addWidget(header);
     vlayout->addWidget(mainsplitter);
 
-    QHBoxLayout *hlayout = new QHBoxLayout;
-    helpButton = new QToolButton;
-    helpButton->setText(tr("help"));
-    helpButton->setIcon(QIcon(":/dc.png"));
-    exitButton = new QToolButton;
-    helpButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    exitButton->setText(tr("exit"));
-    exitButton->setIcon(QIcon(":/dc.png"));
-    exitButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    hlayout->addWidget(helpButton);
-    hlayout->addStretch();
-    hlayout->addWidget(exitButton);
-
-    vlayout->addLayout(hlayout);
+//    QHBoxLayout *hlayout = new QHBoxLayout;
+//    helpButton = new QToolButton;
+//    helpButton->setText(tr("help"));
+//    helpButton->setIcon(QIcon(":/dc.png"));
+//    exitButton = new QToolButton;
+//    helpButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//    exitButton->setText(tr("exit"));
+//    exitButton->setIcon(QIcon(":/dc.png"));
+//    exitButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+//    hlayout->addWidget(helpButton);
+//    hlayout->addStretch();
+//    hlayout->addWidget(exitButton);
+//    vlayout->addLayout(hlayout);
     setLayout(vlayout);//main layout of the UI
-
+    title = new TitleWidget(this);
+    title->move(0,0);
 }
 
 void UkpmWidget::setSumTab()
 {
     QWidget *tabSumBTR = new QWidget();
+    tabSumBTR->setContentsMargins(0,30,0,25);
     tabWidgetBTR->addTab(tabSumBTR,QString());
     tabWidgetBTR->setTabText(2,tr("Statistics"));
+
     QLabel *graphicType = new QLabel(tr("graphic type:"),tabSumBTR);
+    graphicType->setObjectName("m_sumGraphicType");
     sumTypeCombox = new QComboBox(tabSumBTR);
     sumTypeCombox->addItems(QStringList()<<tr("charge")<<tr("charge-accurency")<<tr("discharge")<<tr("discharge-accurency"));
 
+    QListView * listView = new QListView(sumTypeCombox);
+    listView->setStyleSheet("QListView::item:selected {background: #EDEDED }");
+    sumTypeCombox->setView(listView);
     sumCurveBox = new QCheckBox(tr("spline"),tabSumBTR);
     sumDataBox = new QCheckBox(tr("show datapoint"),tabSumBTR);
-
+    sumCurveBox->setFixedSize(110,24);
+    sumDataBox->setFixedSize(110,24);
     QHBoxLayout *bottomLayout = new QHBoxLayout;
-    QHBoxLayout *topLayout = new QHBoxLayout;
     QFormLayout *topFormLayout = new QFormLayout;
-    QVBoxLayout *topchild = new QVBoxLayout;
+//    QWidget *topchild = new QWidget;
+    graphicType->setFixedWidth(80);
+    sumTypeCombox->setFixedWidth(200);
     topFormLayout->addRow(graphicType,sumTypeCombox);
-    topLayout->addLayout(topFormLayout,1);
-    topLayout->addLayout(topchild,1);
+    topFormLayout->setSpacing(0);
+//    topLayout->addLayout(topFormLayout,1);
+//    topLayout->addWidget(topchild,1);
+//    topLayout->setSpacing(200);
     sumChart = new QChart;
+
     x = new QValueAxis;
     y = new QValueAxis;
 
@@ -560,16 +663,37 @@ void UkpmWidget::setSumTab()
     sumSeries->setPointsVisible(true);
     sumSpline->setPointsVisible(true);
 
+//    x->setGridLinePen(Qt::DotLine);
+//    y->setGridLinePen(Qt::DotLine);
+    QFont font("Times");
+    font.setPixelSize(12);
+    x->setLabelsFont(font);
+    y->setLabelsFont(font);
+    font.setBold(true);
+    x->setTitleFont(font);
+    y->setTitleFont(font);
+
     sumChart->legend()->hide();
 //    sumChart->setAnimationOptions(QChart::SeriesAnimations);
+//    QLinearGradient plotGradient;
+//    plotGradient.setStart(QPointF(0,0));
+//    plotGradient.setFinalStop(QPointF(1,0));
+//    plotGradient.setColorAt(0.0,QRgb(0x42ec88));
+//    plotGradient.setColorAt(1.0,QRgb(0xe22524));
+//    plotGradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+
+    sumChart->setPlotAreaBackgroundBrush(plotcolor);
+    sumChart->setPlotAreaBackgroundVisible(true);
 
     sumChartView = new QChartView(sumChart);
     sumChartView->setRenderHint(QPainter::Antialiasing);
-
+    sumChartView->setFixedWidth(594);
     QVBoxLayout *botchild = new QVBoxLayout;
     bottomLayout->addWidget(sumCurveBox,1);
     bottomLayout->addWidget(sumDataBox,1);
-    bottomLayout->addLayout(botchild,1);
+    bottomLayout->addLayout(botchild,4);
+    bottomLayout->setSpacing(40);
+
     QVBoxLayout *vLayout = new QVBoxLayout;
 
     sumStack = new QStackedWidget;
@@ -579,7 +703,7 @@ void UkpmWidget::setSumTab()
     sumStack->addWidget(nodata);
     sumStack->addWidget(sumChartView);
 
-    vLayout->addLayout(topLayout);
+    vLayout->addLayout(topFormLayout);
     vLayout->addWidget(sumStack);
     vLayout->addLayout(bottomLayout);
     tabSumBTR->setLayout(vLayout);
@@ -621,31 +745,56 @@ void UkpmWidget::showSumDataPoint(bool flag)
 void UkpmWidget::setHistoryTab()
 {
     QWidget *tabHisBTR = new QWidget();
+    tabHisBTR->setObjectName("tabHisBTR");
+    tabHisBTR->setContentsMargins(0,30,0,25);
     tabWidgetBTR->addTab(tabHisBTR,QString());
     tabWidgetBTR->setTabText(1,tr("History"));
     QLabel *graphicType = new QLabel(tr("graphic type:"),tabHisBTR);
     graphicType->setScaledContents(true);
     QLabel *timeLabel = new QLabel(tr("time span:"),tabHisBTR);
+    graphicType->setObjectName("m_graphicType");
+    timeLabel->setObjectName("m_timeLabel");
     typeCombox = new QComboBox(tabHisBTR);
     typeCombox->addItems(QStringList()<<tr("rate")<<tr("energy")<<tr("charge-time")<<tr("discharge-time"));
-
+    typeCombox->setObjectName("m_typeCombox");
     spanCombox = new QComboBox(tabHisBTR);
     spanCombox->addItems(QStringList()<<tr("ten minutes")<<tr("two hours")<<tr("six hours")<<tr("one day")<<tr("one week"));
+    graphicType->setFixedWidth(80);
+    typeCombox->setFixedWidth(200);
+    timeLabel->setFixedWidth(80);
+    spanCombox->setFixedWidth(200);
+
+    QListView * typeView = new QListView(typeCombox);
+    typeView->setStyleSheet("QListView::item:selected {background: #EDEDED }");
+    typeCombox->setView(typeView);
+    QListView * spanView = new QListView(spanCombox);
+    spanView->setStyleSheet("QListView::item:selected {background: #EDEDED }");
+    spanCombox->setView(spanView);
 
     hisCurveBox = new QCheckBox(tr("spline"),tabHisBTR);
     hisDataBox = new QCheckBox(tr("show datapoint"),tabHisBTR);
+    hisCurveBox->setFixedSize(110,24);
+    hisDataBox->setFixedSize(110,24);
+    QVBoxLayout *checkpad = new QVBoxLayout;
     QHBoxLayout *topLayout = new QHBoxLayout;
     QHBoxLayout *bottomLayout = new QHBoxLayout;
 
     QFormLayout *hisType = new QFormLayout;
     hisType->addRow(graphicType,typeCombox);
+    hisType->setSpacing(0);
     QFormLayout *hisSpan = new QFormLayout;
     hisSpan->addRow(timeLabel,spanCombox);
+    hisSpan->setSpacing(0);
     topLayout->addLayout(hisType);
     topLayout->addLayout(hisSpan);
+    topLayout->setSpacing(40);
 
-    bottomLayout->addWidget(hisCurveBox);
-    bottomLayout->addWidget(hisDataBox);
+    bottomLayout->addWidget(hisCurveBox,1);
+    bottomLayout->addWidget(hisDataBox,1);
+    bottomLayout->addLayout(checkpad,2);
+    bottomLayout->setSpacing(40);
+//    bottomLayout->setAlignment(hisCurveBox,Qt::AlignLeft);
+//    bottomLayout->setAlignment(hisDataBox,Qt::AlignLeft);
 
     hisChart = new QChart;
 
@@ -657,9 +806,17 @@ void UkpmWidget::setHistoryTab()
     axisY = new QCategoryAxis();
     xtime->setTitleText(tr("elapsed time"));
     xtime->setReverse(true);
+    QFont font("Times");
+    font.setPixelSize(12);
+    xtime->setLabelsFont(font);
+    axisY->setLabelsFont(font);
+    font.setBold(true);
+    xtime->setTitleFont(font);
+    axisY->setTitleFont(font);
     hisChart->setAxisX(xtime);
     hisChart->setAxisY(axisY);
-
+//    axisY->setGridLinePen(Qt::DotLine);
+//    xtime->setGridLinePen(Qt::DotLine);
     hisSpline->attachAxis(xtime);//连接数据集与轴
 
     hisSpline->attachAxis(axisY);
@@ -668,8 +825,17 @@ void UkpmWidget::setHistoryTab()
 
     hisChart->legend()->hide();
 //    hisChart->setAnimationOptions(QChart::SeriesAnimations);
+//    QLinearGradient plotGradient;
+//    plotGradient.setStart(QPointF(0,0));
+//    plotGradient.setFinalStop(QPointF(1,0));
+//    plotGradient.setColorAt(0.0,QRgb(0x42ec88));
+//    plotGradient.setColorAt(1.0,QRgb(0xe22524));
+//    plotGradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+    hisChart->setPlotAreaBackgroundBrush(plotcolor);
+    hisChart->setPlotAreaBackgroundVisible(true);
     hisChartView = new QChartView(hisChart);
     hisChartView->setRenderHint(QPainter::Antialiasing);
+    hisChartView->setFixedWidth(594);
     QVBoxLayout *vLayout = new QVBoxLayout;
     hisStack = new QStackedWidget;
     QLabel *nodata = new QLabel;
@@ -853,12 +1019,12 @@ void UkpmWidget::updateSumChart(int index)
     sumStack->setCurrentIndex(1);
 
 }
-void UkpmWidget::onExitButtonClicked(bool)
+void UkpmWidget::onExitButtonClicked()
 {
     close();
 }
 
-void UkpmWidget::onHelpButtonClicked(bool)
+void UkpmWidget::onHelpButtonClicked()
 {
 
 }
@@ -1245,12 +1411,12 @@ void UkpmWidget::connectSlots()
     connect(typeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateHisType(int)));
     connect(spanCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateHisChart(int)));
     connect(sumTypeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateSumChart(int)));
-    connect(exitButton,SIGNAL(clicked(bool)),this,SLOT(onExitButtonClicked(bool)));
+    connect(title,SIGNAL(signalButtonCloseClicked()),this,SLOT(onExitButtonClicked()));
     connect(sumDataBox,SIGNAL(clicked(bool)),this,SLOT(showSumDataPoint(bool)));
     connect(hisDataBox,SIGNAL(clicked(bool)),this,SLOT(showHisDataPoint(bool)));
     connect(hisCurveBox,SIGNAL(clicked(bool)),this,SLOT(drawHisSpineline(bool)));
     connect(sumCurveBox,SIGNAL(clicked(bool)),this,SLOT(drawSumSpineline(bool)));
-    connect(helpButton,SIGNAL(clicked(bool)),this,SLOT(helpFormat()));
+    connect(title,SIGNAL(signalButtonHelpClicked()),this,SLOT(helpFormat()));
     connect(tabWidgetBTR,SIGNAL(currentChanged(int)),this,SLOT(onBtrPageChanged(int)));
 
     bool checked;
@@ -1630,7 +1796,11 @@ void UkpmWidget::deviceAdded(QDBusMessage  msg)
         if(kind.length() ==0)
             kind = map.value(QString("Type")).toString();
         kindEnum = kind.toInt();
-        QString icon = up_device_kind_to_string((UpDeviceKind)kindEnum);
+        UpDeviceKind newKind = UpDeviceKind(kindEnum);
+        if(newKind != UP_DEVICE_KIND_LINE_POWER && newKind != UP_DEVICE_KIND_BATTERY && newKind != UP_DEVICE_KIND_COMPUTER)
+            return;
+
+        QString icon = up_device_kind_to_string(newKind);
         vendor = map.value(QString("Vendor")).toString();
         model = map.value(QString("Model")).toString();
         if(vendor.length() != 0 && model.length() != 0)
@@ -1683,7 +1853,7 @@ void UkpmWidget::deviceAdded(QDBusMessage  msg)
         calcTime(dev.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
         dev.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
         devices.push_back(dev);
-        addNewUI(objectPath);
+        addNewUI(objectPath,newKind);
     }
 }
 

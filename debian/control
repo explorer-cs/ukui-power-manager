@@ -25,6 +25,7 @@ Build-Depends: debhelper (>= 11),
                pkg-config,
                xmlto,
                yelp-tools,
+               libqt5charts5-dev,
 Standards-Version: 4.1.5
 Homepage: http://www.ukui.org/
 Vcs-Git: https://github.com/ukui/ukui-power-manager.git

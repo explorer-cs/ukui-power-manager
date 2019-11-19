@@ -15,14 +15,17 @@ int main(int argc, char *argv[])
     QStringList arguments = QApplication::arguments();
     if(arguments.size() < 3)
     {
-	    qDebug()<<"arguments is less than 3";
-	    return 0;
+	qDebug()<<"this program is called by ukui-power-manager with 3 arguments totally";
+        qDebug()<<"device supported now, line_power and battery";
+        qDebug()<<"for example: ./run --device battery";
+        return 0;
     }
     QString dev = arguments.at(2);
     if(!(dev.contains("battery")) && !(dev.contains("line_power")))
     {
-	    qDebug()<<"device not supported now, try battery";
-	    return 0;
+        qDebug()<<"device supported now, line_power and battery";
+        qDebug()<<"for example: ./run --device battery";
+        return 0;
     }
     QString locale = QLocale::system().name();
     QTranslator translator;

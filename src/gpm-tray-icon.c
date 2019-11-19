@@ -192,6 +192,14 @@ gpm_tray_icon_show_preferences_cb (GtkMenuItem *item, gpointer data)
 		egg_warning ("Couldn't execute command: %s", command);
 }
 
+static void
+gpm_tray_icon_show_perf_cb (GtkMenuItem *item, gpointer data)
+{
+    const gchar *command = "/home/ll/bin/tlp_controller &";
+
+    if (g_spawn_command_line_async (command, NULL) == FALSE)
+        egg_warning ("Couldn't execute command: %s", command);
+}
 /**
  * gpm_tray_icon_show_about_cb:
  * @action: A valid GtkAction
@@ -490,6 +498,13 @@ gpm_tray_icon_create_menu (GpmTrayIcon *icon)
 	g_signal_connect (G_OBJECT (item), "activate",
 			  G_CALLBACK (gpm_tray_icon_show_preferences_cb), icon);
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
+
+    /*tlp*/
+    item = gtk_image_menu_item_new_with_mnemonic (_("_Tlp Preference"));
+    g_signal_connect (G_OBJECT (item), "activate",
+              G_CALLBACK (gpm_tray_icon_show_perf_cb), icon);
+    gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
+
 	
 	/*Set up custom panel menu theme support-gtk3 only */
 	GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (menu));
