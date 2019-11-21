@@ -192,14 +192,58 @@ gpm_tray_icon_show_preferences_cb (GtkMenuItem *item, gpointer data)
 		egg_warning ("Couldn't execute command: %s", command);
 }
 
+//jiangh powerpolicy
+static gboolean
+gpm_tray_icon_power_policy (gint mode) {
+    GError *error = NULL;
+    GDBusProxy *proxy;
+    GVariant *res = NULL;
+
+    egg_debug ("Requesting power policy");
+    proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+                           G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES,
+                           NULL,
+                           "ukui.power.policy",
+                           "/ukui/power/policy",
+                           "ukui.power.policy",
+                           NULL,
+                           &error );
+    //append all our arguments
+    if (proxy == NULL) {
+        egg_debug("Error connecting to dbus - %s", error->message);
+        g_error_free (error);
+        return FALSE;
+    }
+
+    res = g_dbus_proxy_call_sync (proxy, "control",
+                      g_variant_new( "(i)", mode),
+                      G_DBUS_CALL_FLAGS_NONE,
+                      -1,
+                      NULL,
+                      &error
+                      );
+    if (error != NULL) {
+        egg_debug ("Error in dbus - %s", error->message);
+        g_error_free (error);
+        return FALSE;
+    }
+
+    g_variant_unref(res);
+    return TRUE;
+}
+
 static void
 gpm_tray_icon_show_perf_cb (GtkMenuItem *item, gpointer data)
 {
-    const gchar *command = "/home/ll/bin/tlp_controller &";
-
-    if (g_spawn_command_line_async (command, NULL) == FALSE)
-        egg_warning ("Couldn't execute command: %s", command);
+    gpm_tray_icon_power_policy(0);
 }
+
+static void
+gpm_tray_icon_show_save_cb (GtkMenuItem *item, gpointer data)
+{
+    gpm_tray_icon_power_policy(2);
+}
+
 /**
  * gpm_tray_icon_show_about_cb:
  * @action: A valid GtkAction
@@ -499,12 +543,15 @@ gpm_tray_icon_create_menu (GpmTrayIcon *icon)
 			  G_CALLBACK (gpm_tray_icon_show_preferences_cb), icon);
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
 
-    /*tlp*/
-    item = gtk_image_menu_item_new_with_mnemonic (_("_Tlp Preference"));
+    /*powerpolicy*/
+    item = gtk_image_menu_item_new_with_mnemonic (_("_Performance Mode"));
     g_signal_connect (G_OBJECT (item), "activate",
               G_CALLBACK (gpm_tray_icon_show_perf_cb), icon);
     gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
-
+    item = gtk_image_menu_item_new_with_mnemonic (_("_Save Mode"));
+    g_signal_connect (G_OBJECT (item), "activate",
+              G_CALLBACK (gpm_tray_icon_show_save_cb), icon);
+    gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
 	
 	/*Set up custom panel menu theme support-gtk3 only */
 	GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (menu));

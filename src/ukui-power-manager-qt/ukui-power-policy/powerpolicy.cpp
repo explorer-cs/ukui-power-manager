@@ -13,7 +13,7 @@
 #define DBUS_SERVICE "org.freedesktop.UPower"
 #define DBUS_OBJECT "/org/freedesktop/UPower"
 #define DBUS_INTERFACE "org.freedesktop.DBus.Properties"
-#define POWER_SETTINGS_SCHEMA "org.mate.power-manager"
+#define POWER_SETTINGS_SCHEMA "org.ukui.power-manager"
 #define POWERPOLICY_MODE_TEXT			"power-policy-mode"
 
 
