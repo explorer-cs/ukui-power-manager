@@ -1402,10 +1402,10 @@ void UkpmWidget::connectSlots()
     QDBusConnection::systemBus().connect(DBUS_SERVICE,acSvr,DBUS_INTERFACE,
                                          QString("PropertiesChanged"),this,SLOT(acPropertiesChanged(QDBusMessage)));
 
-    QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
+    /*QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
                                          QString("device-added"),this,SLOT(deviceAdded(QDBusMessage)));
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
-                                         QString("device-removed"),this,SLOT(deviceRemoved(QDBusMessage)));
+                                         QString("device-removed"),this,SLOT(deviceRemoved(QDBusMessage)));*/
 
     connect(listWidget,SIGNAL(currentRowChanged(int)),this,SLOT(onListChanged(int)));
     connect(typeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateHisType(int)));

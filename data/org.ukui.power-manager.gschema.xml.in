@@ -335,6 +335,10 @@
       <default>true</default>
       <summary>If preferences and statistics items should be shown in the context menu</summary>
     </key>
+    <key name="power-policy-mode" type="i">
+      <default>0</default>
+      <summary>power policy mode</summary>
+    </key>
     <key name="icon-policy" enum="org.ukui.power-manager.IconPolicy">
       <default>'present'</default>
       <summary>When to show the notification icon</summary>

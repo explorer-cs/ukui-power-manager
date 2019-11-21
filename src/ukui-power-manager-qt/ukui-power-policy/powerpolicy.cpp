@@ -2,13 +2,58 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "dbus_struct.h"
+#include <QDBusConnection>
+#include <QDBusArgument>
+#include <QDebug>
 
-#define SAVEPOWER            0
-#define PERFORMANCE          1
-#define DEFAULT              2
+#define PERFORMANCE          0
+#define DEFAULT              1
+#define SAVEPOWER            2
+
+#define DBUS_SERVICE "org.freedesktop.UPower"
+#define DBUS_OBJECT "/org/freedesktop/UPower"
+#define DBUS_INTERFACE "org.freedesktop.DBus.Properties"
+#define POWER_SETTINGS_SCHEMA "org.mate.power-manager"
+#define POWERPOLICY_MODE_TEXT			"power-policy-mode"
+
+
 
 PowerPolicy::PowerPolicy(QObject *parent) : QObject(parent)
 {
+    settings = new QGSettings(POWER_SETTINGS_SCHEMA);
+    mode = settings->getInt(POWERPOLICY_MODE_TEXT);
+//    qDebug()<<"mode is:"<<mode;
+//    if(mode == 0)
+//    {
+//        mode = DEFAULT;
+//        settings->setInt(POWERPOLICY_MODE_TEXT,mode);
+//    }
+    connect(this,SIGNAL(onbattery_change(bool)),this,SLOT(onbattery_change_slot(bool)));
+    QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_INTERFACE,
+                                         QString("PropertiesChanged"),this,SLOT(onPropertiesSlot(QDBusMessage)));
+}
+
+void PowerPolicy::onPropertiesSlot(QDBusMessage msg)
+{
+
+    const QDBusArgument &arg = msg.arguments().at(1).value<QDBusArgument>();
+    QMap<QString,QVariant> map;
+    arg >> map;
+    if(map.contains("OnBattery"))
+    {
+        onbattery=map.value(QString("OnBattery")).toBool();
+        Q_EMIT onbattery_change(onbattery);
+    }
+
+}
+
+void PowerPolicy::onbattery_change_slot(bool flag)
+{
+    if(flag)
+        qDebug()<<"power on battery";
+    else
+        qDebug()<<"power on ac";
+   control(mode);
 
 }
 
@@ -22,10 +67,6 @@ void PowerPolicy:: set_string(QString argc)
     printf("set_string: %s\n", argc.toStdString().data());
 }
 
-void PowerPolicy:: set_variantlist(int cnt, QVariantList argc)
-{
-    printf("set_variantlist cnt: %d\n", cnt);
-}
 
 int PowerPolicy:: return_integer()
 {
@@ -80,20 +121,24 @@ QString PowerPolicy:: return_string_and_set_string(const QString &argc_1)
     return value;
 }
 
-QString PowerPolicy::control_tlp(int opt)
+QString PowerPolicy::control(int opt)
 {
     if(opt == SAVEPOWER)
     {
-        process("savepower");
+        mode = opt;
+        process(mode);
+
     }
     else if(opt == PERFORMANCE)
     {
-        process("performance");
+        mode = opt;
+        process(mode);
 
     }
     else if(opt == DEFAULT)
     {
-        process("default");
+        mode = opt;
+        process(mode);
 
     }
     else
@@ -102,10 +147,11 @@ QString PowerPolicy::control_tlp(int opt)
 
 }
 
-int PowerPolicy::process(char* option)
+int PowerPolicy::process(int option)
 {
+      settings->setInt(POWERPOLICY_MODE_TEXT,mode);
       QString cmd;
-      cmd.sprintf("~/tlp/myshellc/test.sh %s",option);
+      cmd.sprintf("~/tlp/myshellc/test.sh %d",option);
       int rv = system(cmd.toStdString().c_str());
         if (WIFEXITED(rv))
         {
@@ -126,7 +172,7 @@ int PowerPolicy::process(char* option)
                   }
                   else
                   {
-                       printf("command failed: %d\n", strerror(WEXITSTATUS(rv)));
+                       printf("command failed: %s\n", strerror(WEXITSTATUS(rv)));
                        ret.sprintf("command failed");
                        return WEXITSTATUS(rv);
                   }
@@ -138,5 +184,7 @@ int PowerPolicy::process(char* option)
              ret.sprintf("subprocess exit failed");
              return -1;
         }
+        return -1;
+
 }
 

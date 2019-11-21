@@ -1,6 +1,6 @@
 #include <QCoreApplication>
 #include "powerpolicy.h"
-#include "manager_adaptor.h"
+#include "policy_adaptor.h"
 
 int main(int argc, char *argv[])
 {
@@ -9,13 +9,13 @@ int main(int argc, char *argv[])
     qDBusRegisterMetaType<dbus_demo_example_struct>();
     QDBusConnection connection = QDBusConnection::systemBus();
 
-    if (!connection.registerService("tlp.local.manager")) {
+    if (!connection.registerService("ukui.power.policy")) {
         qDebug() << "error:" << connection.lastError().message();
         exit(-1);
     }
 
     PowerPolicy *power= new PowerPolicy();
-    new ManagerAdaptor(power);
-    connection.registerObject("/tlp/local/manager", power);
+    new PolicyAdaptor(power);
+    connection.registerObject("/ukui/power/policy", power);
     return a.exec();
 }
