@@ -1853,7 +1853,7 @@ void UkpmWidget::deviceAdded(QDBusMessage  msg)
         calcTime(dev.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
         dev.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
         devices.push_back(dev);
-        addNewUI(objectPath,newKind);
+//        addNewUI(objectPath,newKind);
     }
 }
 
@@ -1869,13 +1869,13 @@ void UkpmWidget::deviceRemoved(QDBusMessage  msg)
         listItem.erase(iter);
         delete iter.value();
     }
-    QMap<QDBusObjectPath,QTabWidget*>::iterator iterWidget = widgetItem.find(objectPath);
-    if(iterWidget!= widgetItem.end())
-    {
-        stackedWidget->removeWidget(iterWidget.value());
-        widgetItem.erase(iterWidget);
-        delete iterWidget.value();
-    }
+//    QMap<QDBusObjectPath,QTabWidget*>::iterator iterWidget = widgetItem.find(objectPath);
+//    if(iterWidget!= widgetItem.end())
+//    {
+//        stackedWidget->removeWidget(iterWidget.value());
+//        widgetItem.erase(iterWidget);
+//        delete iterWidget.value();
+//    }
 }
 
 
