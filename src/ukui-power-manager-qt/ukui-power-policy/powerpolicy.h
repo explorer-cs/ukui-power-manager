@@ -15,8 +15,10 @@ public:
     explicit PowerPolicy(QObject *parent = 0);
 
     int process(int option);
+    int script_process(QString cmd);
 Q_SIGNALS:
     void onbattery_change(bool);
+    void ModeChanged(int);
 public Q_SLOTS:
     void set_integer(int argc);
     void set_string(QString argc);
@@ -30,13 +32,14 @@ public Q_SLOTS:
     QString           control(int opt);
     void onPropertiesSlot(QDBusMessage msg);
     void onbattery_change_slot(bool flag);
+    int power_control(QString power_status, QString power_mode);
 private:
     int dbus_integer;
     QString ret;
     QVariant dbus_variant;
     bool onbattery;
     int mode;
-    QGSettings *settings;
+//    QGSettings *settings;
 };
 
 #endif // POWERPOLICY_H

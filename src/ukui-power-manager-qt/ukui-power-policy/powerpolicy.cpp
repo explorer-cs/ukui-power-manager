@@ -20,17 +20,21 @@
 
 PowerPolicy::PowerPolicy(QObject *parent) : QObject(parent)
 {
-    settings = new QGSettings(POWER_SETTINGS_SCHEMA);
-    mode = settings->getInt(POWERPOLICY_MODE_TEXT);
-//    qDebug()<<"mode is:"<<mode;
-//    if(mode == 0)
-//    {
-//        mode = DEFAULT;
-//        settings->setInt(POWERPOLICY_MODE_TEXT,mode);
-//    }
+//    settings = new QGSettings(POWER_SETTINGS_SCHEMA);
+//    mode = settings->getInt(POWERPOLICY_MODE_TEXT);
+
     connect(this,SIGNAL(onbattery_change(bool)),this,SLOT(onbattery_change_slot(bool)));
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_INTERFACE,
                                          QString("PropertiesChanged"),this,SLOT(onPropertiesSlot(QDBusMessage)));
+    QDBusMessage msg = QDBusMessage::createMethodCall(DBUS_SERVICE,DBUS_OBJECT,DBUS_INTERFACE,"Get");
+    msg<<DBUS_SERVICE<<"OnBattery";
+    QDBusMessage res = QDBusConnection::systemBus().call(msg);
+    if(res.type()==QDBusMessage::ReplyMessage)
+    {
+//        const QDBusArgument& arg = res.arguments().at(0).value<QDBusArgument>();
+//        arg>>onbattery;
+        onbattery = res.arguments().takeFirst().toBool();
+    }
 }
 
 void PowerPolicy::onPropertiesSlot(QDBusMessage msg)
@@ -49,11 +53,30 @@ void PowerPolicy::onPropertiesSlot(QDBusMessage msg)
 
 void PowerPolicy::onbattery_change_slot(bool flag)
 {
+    /**change mode**/
+//    if(flag)
+//    {
+//        qDebug()<<"power on battery";
+//        mode = SAVEPOWER;
+//        settings->setInt(POWERPOLICY_MODE_TEXT,mode);
+//        QString cmd;
+//        cmd.sprintf("/usr/bin/bat_power_policy.sh %d",mode);//exec bat in save
+//    }
+//    else
+//    {
+//        qDebug()<<"power on ac";
+//        mode = PERFORMANCE;
+//        settings->setInt(POWERPOLICY_MODE_TEXT,mode);
+//        QString cmd;
+//        cmd.sprintf("/usr/bin/ac_power_policy.sh %d",mode);//exec ac in performance
+//    }
+    /**not change mode**/
+    //   control(mode);
     if(flag)
-        qDebug()<<"power on battery";
-    else
-        qDebug()<<"power on ac";
-   control(mode);
+        process(SAVEPOWER);//from ac to battery
+    else {
+        process(PERFORMANCE);//from battery to ac
+    }
 
 }
 
@@ -85,7 +108,7 @@ bool PowerPolicy:: return_bool()
 
 QString PowerPolicy:: return_string()
 {
-    QString name = "zhangsan";
+    QString name = "";
     return name;
 }
 
@@ -97,8 +120,8 @@ QVariantList PowerPolicy::return_variantlist()
     for(int i = 0; i < 3; i++)
     {
         demo[i].drv_ID = 1;
-        demo[i].name   = "wangwu";
-        demo[i].full_name = "lisi";
+        demo[i].name   = "";
+        demo[i].full_name = "";
         demo[i].notify_mid = 2;
         cnt = QVariant::fromValue(demo[i]);
         value << cnt;
@@ -119,6 +142,49 @@ QString PowerPolicy:: return_string_and_set_string(const QString &argc_1)
     QString value;
     value = argc_1.toLower();
     return value;
+}
+int PowerPolicy::power_control(QString power_status, QString power_mode)
+{
+    if(power_mode == "powersave")
+        mode = SAVEPOWER;
+    else if(power_mode == ("performance"))
+        mode = PERFORMANCE;
+//    settings->setInt(POWERPOLICY_MODE_TEXT,mode);
+    QString cmd;
+    cmd = QString("/usr/bin/power_policy.sh") + " " + power_status + " " + power_mode;
+    int rv = system(cmd.toStdString().c_str());
+    if (WIFEXITED(rv))
+    {
+         printf("subprocess exited, exit code: %d\n", WEXITSTATUS(rv));
+         if (0 == WEXITSTATUS(rv))
+         {
+              // if command returning 0 means succeed
+              printf("command succeed");
+              ret.sprintf("command succeed");
+              return 0;
+         }
+         else
+         {
+              if(127 == WEXITSTATUS(rv))
+              {
+                   printf("command not found\n");
+                   ret.sprintf("command not found");
+                   return WEXITSTATUS(rv);
+              }
+              else
+              {
+                   printf("command failed: %s\n", strerror(WEXITSTATUS(rv)));
+                   ret.sprintf("command failed");
+                   return WEXITSTATUS(rv);
+              }
+         }
+     }
+    else
+    {
+         printf("subprocess exit failed");
+         ret.sprintf("subprocess exit failed");
+         return -1;
+    }
 }
 
 QString PowerPolicy::control(int opt)
@@ -141,6 +207,12 @@ QString PowerPolicy::control(int opt)
         process(mode);
 
     }
+    else if(opt == 3)
+    {
+        mode = opt;
+        process(mode);
+
+    }
     else
         ret.sprintf("undefined mode");
     return ret;
@@ -149,42 +221,102 @@ QString PowerPolicy::control(int opt)
 
 int PowerPolicy::process(int option)
 {
-      settings->setInt(POWERPOLICY_MODE_TEXT,mode);
-      QString cmd;
-      cmd.sprintf("~/tlp/myshellc/test.sh %d",option);
-      int rv = system(cmd.toStdString().c_str());
-        if (WIFEXITED(rv))
-        {
-             printf("subprocess exited, exit code: %d\n", WEXITSTATUS(rv));
-             if (0 == WEXITSTATUS(rv))
-             {
-                  // if command returning 0 means succeed
-                  printf("command succeed");
-                  ret.sprintf("command succeed");
-             }
-             else
-             {
-                  if(127 == WEXITSTATUS(rv))
-                  {
-                       printf("command not found\n");
-                       ret.sprintf("command not found");
-                       return WEXITSTATUS(rv);
-                  }
-                  else
-                  {
-                       printf("command failed: %s\n", strerror(WEXITSTATUS(rv)));
-                       ret.sprintf("command failed");
-                       return WEXITSTATUS(rv);
-                  }
-             }
+    Q_EMIT ModeChanged(option);
+    QString power_status;
+    QString power_mode;
+    if(onbattery)
+        power_status = "BAT";
+    else {
+        power_status = "AC";
+    }
+
+    if(option==0)
+    {
+        power_mode = "PERFORMANCE";
+//        settings->setInt(POWERPOLICY_MODE_TEXT,0);//present 2 mode;
+    }
+    else {
+        power_mode = "POWERSAVE";
+//        settings->setInt(POWERPOLICY_MODE_TEXT,2);
+    }
+//      settings->setInt(POWERPOLICY_MODE_TEXT,option);
+//      QString cmd;
+//      cmd.sprintf("/usr/bin/power_policy.sh %d",option);
+    QString cmd;
+    cmd = QString("/usr/bin/power_policy.sh") + " " + power_status + " " + power_mode;
+    int rv = system(cmd.toStdString().c_str());
+    if (WIFEXITED(rv))
+    {
+         printf("subprocess exited, exit code: %d\n", WEXITSTATUS(rv));
+         if (0 == WEXITSTATUS(rv))
+         {
+              // if command returning 0 means succeed
+              printf("command succeed");
+              ret.sprintf("command succeed");
+              return 0;
          }
-        else
-        {
-             printf("subprocess exit failed");
-             ret.sprintf("subprocess exit failed");
-             return -1;
-        }
-        return -1;
+         else
+         {
+              if(127 == WEXITSTATUS(rv))
+              {
+                   printf("command not found\n");
+                   ret.sprintf("command not found");
+                   return WEXITSTATUS(rv);
+              }
+              else
+              {
+                   printf("command failed: %s\n", strerror(WEXITSTATUS(rv)));
+                   ret.sprintf("command failed");
+                   return WEXITSTATUS(rv);
+              }
+         }
+     }
+    else
+    {
+         printf("subprocess exit failed");
+         ret.sprintf("subprocess exit failed");
+         return -1;
+    }
 
 }
 
+int PowerPolicy::script_process(QString cmd)
+{
+//    settings->setInt(POWERPOLICY_MODE_TEXT,mode);
+    //      QString cmd;
+    //      cmd.sprintf("/usr/bin/power_policy.sh %d",option);
+    int rv = system(cmd.toStdString().c_str());
+    if (WIFEXITED(rv))
+    {
+         printf("subprocess exited, exit code: %d\n", WEXITSTATUS(rv));
+         if (0 == WEXITSTATUS(rv))
+         {
+              // if command returning 0 means succeed
+              printf("command succeed");
+              ret.sprintf("command succeed");
+         }
+         else
+         {
+              if(127 == WEXITSTATUS(rv))
+              {
+                   printf("command not found\n");
+                   ret.sprintf("command not found");
+                   return WEXITSTATUS(rv);
+              }
+              else
+              {
+                   printf("command failed: %s\n", strerror(WEXITSTATUS(rv)));
+                   ret.sprintf("command failed");
+                   return WEXITSTATUS(rv);
+              }
+         }
+     }
+    else
+    {
+         printf("subprocess exit failed");
+         ret.sprintf("subprocess exit failed");
+         return -1;
+    }
+    return -1;
+
+}
