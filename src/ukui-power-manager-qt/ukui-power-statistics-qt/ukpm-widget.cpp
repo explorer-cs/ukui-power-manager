@@ -2,6 +2,7 @@
 #include "customtype.h"
 #include "sys/time.h"
 
+
 #define GPM_HISTORY_RATE_TEXT			"Rate"
 #define GPM_HISTORY_CHARGE_TEXT			"Charge"
 #define GPM_HISTORY_TIME_FULL_TEXT		"Time to full"
@@ -29,6 +30,7 @@
 #define GPM_STATS_DISCHARGE_DATA_VALUE		"discharge-data"
 #define GPM_STATS_DISCHARGE_ACCURACY_VALUE	"discharge-accuracy"
 
+
 UkpmWidget::UkpmWidget(QWidget *parent)
     : QWidget(parent)
 {
@@ -38,16 +40,9 @@ UkpmWidget::UkpmWidget(QWidget *parent)
     qApp->setStyleSheet(styleSheet);
     plotcolor.setNamedColor("#F1F1F1");
     plotcolor.setAlpha(255);
-
     settings = new QGSettings(GPM_SETTINGS_SCHEMA);
-
-    initUI();
-
-    registerCustomType();
-
-    getDevices();
-
-    connectSlots();
+    setupUI();
+    getSlots();
 
 }
 
@@ -132,6 +127,69 @@ int UkpmWidget::parseArguments()
     return index;
 }
 
+void UkpmWidget::getProperty(QString path,DEV& dev)
+{
+
+    QDBusMessage msg = QDBusMessage::createMethodCall(DBUS_SERVICE,path,
+            DBUS_INTERFACE,"GetAll");
+    msg << DBUS_INTERFACE_PARAM;
+    QDBusMessage res = QDBusConnection::systemBus().call(msg);
+
+    if(res.type() == QDBusMessage::ReplyMessage)
+    {
+        const QDBusArgument &dbusArg = res.arguments().at(0).value<QDBusArgument>();
+        QMap<QString,QVariant> map;
+        dbusArg >> map;
+
+        dev.kind = (UpDeviceKind)map.value(QString("Type")).toInt();
+        dev.Type = device_kind_to_localised_text ((UpDeviceKind)map.value(QString("Type")).toInt(),1);
+        dev.Model = map.value(QString("Model")).toString();
+        dev.Device = map.value(QString("NativePath")).toString();
+        dev.Vendor = map.value(QString("Vendor")).toString();
+        dev.Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
+        dev.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
+        dev.EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
+        dev.EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
+        dev.EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
+        dev.EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
+        dev.IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
+        dev.IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
+        dev.PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
+        dev.Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
+        dev.Online = boolToString(map.value(QString("Online")).toBool());
+
+        dev.update_time = QString::number(map.value(QString("UpdateTime")).toLongLong());
+
+        int flag = map.value(QString("State")).toLongLong();
+        switch (flag) {
+        case 1:
+            dev.State = tr("Charging");
+            break;
+        case 2:
+            dev.State = tr("Discharging");
+            break;
+        case 3:
+            dev.State = tr("Empty");
+            break;
+        case 4:
+            dev.State = tr("Charged");
+            break;
+        case 5:
+            dev.State = tr("PendingCharge");
+            break;
+        case 6:
+            dev.State = tr("PendingDischarge");
+            break;
+        default:
+            break;
+        }
+        calcTime(dev.TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
+        calcTime(dev.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
+        dev.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
+
+    }
+}
+
 void UkpmWidget::getDevices()
 {
     QListWidgetItem *item;
@@ -182,75 +240,85 @@ void UkpmWidget::getDevices()
             {
                 item = new QListWidgetItem(QIcon(":/images/"+icon+".png"),label);
                 listItem.insert(deviceNames.at(i),item);
-                listWidget->insertItem(i,item);
+//                listWidget->insertItem(i,item);
+                listWidget->addItem(item);
             }
+            else
+                return;
 
-            DEV dev;
-            dev.Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
-            dev.Model = map.value(QString("Model")).toString();
-            dev.Device = map.value(QString("NativePath")).toString();
-            dev.Vendor = map.value(QString("Vendor")).toString();
-            dev.Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
-            dev.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
-            dev.EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
-            dev.EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
-            dev.EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
-            dev.EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-            dev.IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
-            dev.IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
-            dev.PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
-            dev.Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
-            dev.Online = boolToString(map.value(QString("Online")).toBool());
-            struct timeval tv;
-            uint tim;
-            gettimeofday(&tv,NULL);
-            tim = tv.tv_sec - map.value(QString("UpdateTime")).toLongLong();
-            btrDetailData.Refresh = getSufix(tim,'s');
+            DEVICE *dev = new DEVICE;
+            dev->m_dev->kind = (UpDeviceKind)kindEnum;
+            dev->m_dev->path = deviceNames.at(i).path();
+            qDebug()<<dev->m_dev->path;
+            dev->m_dev->hasHistory = map.value(QString("HasHistory")).toBool();
+            dev->m_dev->hasStat = map.value(QString("HasStatistics")).toBool();
+//            dev->Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
+            dev->m_dev->Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
+            dev->m_dev->Model = map.value(QString("Model")).toString();
+            dev->m_dev->Device = map.value(QString("NativePath")).toString();
+            dev->m_dev->Vendor = map.value(QString("Vendor")).toString();
+            dev->m_dev->Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
+            dev->m_dev->Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
+            dev->m_dev->EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
+            dev->m_dev->EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
+            dev->m_dev->EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
+            dev->m_dev->EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
+            dev->m_dev->IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
+            dev->m_dev->IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
+            dev->m_dev->PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
+            dev->m_dev->Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
+            dev->m_dev->Online = boolToString(map.value(QString("Online")).toBool());
+//            struct timeval tv;
+//            uint tim;
+//            gettimeofday(&tv,NULL);
+//            tim = tv.tv_sec - map.value(QString("UpdateTime")).toLongLong();
+//            dev->m_dev.Refresh = getSufix(tim,'s');
 
-            flag = map.value(QString("State")).toLongLong();
+            int flag = map.value(QString("State")).toLongLong();
             switch (flag) {
             case 1:
-                dev.State = tr("Charging");
+                dev->m_dev->State = tr("Charging");
                 break;
             case 2:
-                dev.State = tr("Discharging");
+                dev->m_dev->State = tr("Discharging");
                 break;
             case 3:
-                dev.State = tr("Empty");
+                dev->m_dev->State = tr("Empty");
                 break;
             case 4:
-                dev.State = tr("Charged");
+                dev->m_dev->State = tr("Charged");
+                break;
+            case 5:
+                dev->m_dev->State = tr("PendingCharge");
+                break;
+            case 6:
+                dev->m_dev->State = tr("PendingDischarge");
                 break;
             default:
                 break;
             }
-            calcTime(dev.TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
-            calcTime(dev.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
-            dev.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
+            calcTime(dev->m_dev->TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
+            calcTime(dev->m_dev->TimeToFull, map.value(QString("TimeToFull")).toLongLong());
+            dev->m_dev->Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
 
             devices.push_back(dev);
+            dev_item.insert(dev,item);
         }
     }
-    if(!batterySvr.isEmpty())
-    {
-        memcpy(&btrDetailData,&devices.at(0),sizeof(DEV));
-    	setupBtrUI();
-    }
-    if(!acSvr.isEmpty())
-    {
-        memcpy(&dcDetailData,&devices.at(1),sizeof(DEV));
-    	setupDcUI();
-    }
+//    if(!batterySvr.isEmpty())
+//    {
+//        memcpy(&btrDetailData,&devices.at(0),sizeof(DEV));
+//    	setupBtrUI();
+//    }
+//    if(!acSvr.isEmpty())
+//    {
+//        memcpy(&dcDetailData,&devices.at(1),sizeof(DEV));
+//    	setupDcUI();
+//    }
 
 //    setupBtrUI();
 //    setupDcUI();
 
-}
-
-void UkpmWidget::onUSBDeviceHotPlug(int drvid, int action, int devNumNow)
-{
-    qDebug() << "device"<< (action > 0 ? "insert:" : "pull out:");
-    qDebug() << "id:" << drvid << devNumNow;
 }
 
 void UkpmWidget::calcTime(QString &attr, uint time)
@@ -272,79 +340,6 @@ void UkpmWidget::calcTime(QString &attr, uint time)
         return;
     }
 }
-
-void UkpmWidget::putAttributes(QMap<QString,QVariant>& map)
-{
-    if(map.contains("TimeToFull"))
-    {
-        calcTime(btrDetailData.TimeToFull,map.value(QString("TimeToFull")).toLongLong());
-    }
-    if(map.contains("TimeToEmpty"))
-        calcTime(btrDetailData.TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
-    if(map.contains("EnergyRate"))
-        btrDetailData.EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-    if(map.contains("Energy"))
-        btrDetailData.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
-    if(map.contains("Voltage"))
-        btrDetailData.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
-    if(map.contains("UpdateTime"))
-    {
-        struct timeval tv;
-        uint tim;
-        gettimeofday(&tv,NULL);
-        tim = tv.tv_sec - map.value(QString("UpdateTime")).toLongLong();
-        btrDetailData.Refresh = getSufix(tim,'s');
-    }
-
-    if(map.contains("State"))
-    {
-        flag = map.value(QString("State")).toLongLong();
-
-        switch (flag) {
-        case 1:
-            btrDetailData.State = tr("Charging");
-            break;
-        case 2:
-            btrDetailData.State = tr("Discharging");
-            break;
-        case 3:
-            btrDetailData.State = tr("Empty");
-            break;
-        case 4:
-            btrDetailData.State = tr("Charged");
-            break;
-        default:
-            break;
-        }
-
-    }
-    if(map.contains("Percentage"))
-    {
-        btrDetailData.Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
-    }
-
-    if(map.contains("PowerSupply"))
-        btrDetailData.PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
-
-    detailBTRTable->item(1,1)->setText(btrDetailData.Type);
-    detailBTRTable->item(2,1)->setText(btrDetailData.Vendor);
-    detailBTRTable->item(3,1)->setText(btrDetailData.Model);
-    detailBTRTable->item(4,1)->setText(btrDetailData.PowerSupply);
-    detailBTRTable->item(5,1)->setText(btrDetailData.Refresh);
-    detailBTRTable->item(6,1)->setText(btrDetailData.IsPresent);
-    detailBTRTable->item(7,1)->setText(btrDetailData.IsRechargeable);
-    detailBTRTable->item(8,1)->setText(btrDetailData.State);
-    detailBTRTable->item(9,1)->setText(btrDetailData.Energy);
-    detailBTRTable->item(10,1)->setText(btrDetailData.EnergyFull);
-    detailBTRTable->item(11,1)->setText(btrDetailData.EnergyFullDesign);
-    detailBTRTable->item(12,1)->setText(btrDetailData.EnergyRate);
-    detailBTRTable->item(13,1)->setText(btrDetailData.Voltage);
-    detailBTRTable->item(14,1)->setText(btrDetailData.TimeToFull);
-    detailBTRTable->item(15,1)->setText(btrDetailData.TimeToEmpty);
-    detailBTRTable->item(16,1)->setText(btrDetailData.Percentage);
-    detailBTRTable->item(17,1)->setText(btrDetailData.Capacity);
-}
-
 
 void UkpmWidget::onShow()
 {
@@ -371,281 +366,605 @@ void UkpmWidget::onActivatedIcon(QSystemTrayIcon::ActivationReason reason)
 
 }
 
-void UkpmWidget::addNewUI(QDBusObjectPath &path, UpDeviceKind newKind)
+void UkpmWidget::addListRow(QString attr,QString value)
 {
-    if(newKind == UP_DEVICE_KIND_LINE_POWER)
+
+    QList<QStandardItem *> list;
+    list << new QStandardItem(attr) << new QStandardItem(value);
+    model->insertRow(model->rowCount(),list);
+}
+
+/**
+ * ukpm_update_info_page_details:
+ **/
+
+void UkpmWidget::
+ukpm_update_info_page_details (DEV* device)
+{
+    DEV dev;
+    getProperty(device->path,dev);
+    /* get a human readable time */
+    struct timeval tv;
+    uint tim;
+    gettimeofday(&tv,NULL);
+    QString device_path = device->path.split("/").last();
+
+    if(model==NULL)
+        return;
+    model->clear();
+    QStringList header;
+    header << tr("Attribute") << tr("Value");
+    model->setHorizontalHeaderLabels(header);
+
+    addListRow(tr("Device"),device_path);
+    /* TRANSLATORS: the device ID of the current device, e.g. "battery0" */
+    addListRow(tr("Type"),dev.Type);
+
+    if (dev.Vendor != NULL && dev.Vendor[0] != '\0')
+        addListRow (tr("Vendor"), dev.Vendor);
+    if (dev.Model != NULL && dev.Model != '\0')
+        addListRow (tr("Model"), dev.Model);
+    if (dev.serial != NULL && dev.serial[0] != '\0')
+        addListRow (tr("Serial number"), dev.serial);
+
+    addListRow (tr("Supply"), dev.PowerSupply);
+
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MOUSE ||
+        dev.kind == UP_DEVICE_KIND_KEYBOARD)
     {
-        QTabWidget *tabWidgetDC = new QTabWidget();
-        QWidget *DetailDc = new QWidget();
-        tabWidgetDC->addTab(DetailDc,QString());
-        tabWidgetDC->setTabText(0,tr("Detail"));
-        stackedWidget->addWidget(tabWidgetDC);
-        widgetItem.insert(path,tabWidgetDC);
+        tim = tv.tv_sec - dev.update_time.toLong();
+        dev.Refresh = getSufix(tim,'s');
 
-        QTableWidget *detailDcTable = new QTableWidget(4,2,DetailDc);
-        QStringList strList;
-        strList << tr("attribute") << tr("value");
-        detailDcTable->setHorizontalHeaderLabels(strList);
-
-        detailDcTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        detailDcTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
-        detailDcTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
-        detailDcTable->setItem(2,0,new QTableWidgetItem(tr("PowerSupply")));
-        detailDcTable->setItem(3,0,new QTableWidgetItem(tr("Online")));
-
-        detailDcTable->setItem(0,1,new QTableWidgetItem(dcDetailData.Device));
-        detailDcTable->setItem(1,1,new QTableWidgetItem(dcDetailData.Type));
-        detailDcTable->setItem(2,1,new QTableWidgetItem(dcDetailData.PowerSupply));
-        detailDcTable->setItem(3,1,new QTableWidgetItem(dcDetailData.Online));
-        detailDcTable->verticalHeader()->setVisible(false);
-        detailDcTable->horizontalHeader()->setStretchLastSection(true);
-
-        QVBoxLayout *detailDcLayout = new QVBoxLayout;
-        detailDcLayout->addWidget(detailDcTable);
-        DetailDc->setLayout(detailDcLayout);
+        addListRow (tr("Refreshed"), dev.Refresh);
     }
-    else if(newKind == UP_DEVICE_KIND_BATTERY)
-    {
-        QTabWidget* tabWidgetBTR = new QTabWidget();
-        QWidget *detailBTR = new QWidget();
-        tabWidgetBTR->addTab(detailBTR,QString());
-        tabWidgetBTR->setTabText(0,tr("Detail"));
-        stackedWidget->addWidget(tabWidgetBTR);
-        QStringList strList;
-        strList << tr("attribute") << tr("value");
-        QTableWidget *detailBTRTable = new QTableWidget(18,2,detailBTR);
-        detailBTRTable->setHorizontalHeaderLabels(strList);
-        detailBTRTable->verticalHeader()->setVisible(false);
-        detailBTRTable->horizontalHeader()->setStretchLastSection(true);
-        detailBTRTable->setShowGrid(false);
-        detailBTRTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        detailBTRTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
 
-        detailBTRTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
-        detailBTRTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
-        detailBTRTable->setItem(2,0,new QTableWidgetItem(tr("Vendor")));
-        detailBTRTable->setItem(3,0,new QTableWidgetItem(tr("Model")));
-        detailBTRTable->setItem(4,0,new QTableWidgetItem(tr("PowerSupply")));
-        detailBTRTable->setItem(5,0,new QTableWidgetItem(tr("Refresh")));
-        detailBTRTable->setItem(6,0,new QTableWidgetItem(tr("IsPresent")));
-        detailBTRTable->setItem(7,0,new QTableWidgetItem(tr("IsRechargeable")));
-        detailBTRTable->setItem(8,0,new QTableWidgetItem(tr("State")));
-        detailBTRTable->setItem(9,0,new QTableWidgetItem(tr("Energy")));
-        detailBTRTable->setItem(10,0,new QTableWidgetItem(tr("EnergyFull")));
-        detailBTRTable->setItem(11,0,new QTableWidgetItem(tr("EnergyFullDesign")));
-        detailBTRTable->setItem(12,0,new QTableWidgetItem(tr("EnergyRate")));
-        detailBTRTable->setItem(13,0,new QTableWidgetItem(tr("Voltage")));
-        detailBTRTable->setItem(14,0,new QTableWidgetItem(tr("TimeToFull")));
-        detailBTRTable->setItem(15,0,new QTableWidgetItem(tr("TimeToEmpty")));
-        detailBTRTable->setItem(16,0,new QTableWidgetItem(tr("Percentage")));
-        detailBTRTable->setItem(17,0,new QTableWidgetItem(tr("Capacity")));
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MOUSE ||
+        dev.kind == UP_DEVICE_KIND_KEYBOARD ||
+        dev.kind == UP_DEVICE_KIND_UPS) {
 
-        detailBTRTable->setItem(0,1,new QTableWidgetItem(btrDetailData.Device));
-        detailBTRTable->setItem(1,1,new QTableWidgetItem(btrDetailData.Type));
-        detailBTRTable->setItem(2,1,new QTableWidgetItem(btrDetailData.Vendor));
-        detailBTRTable->setItem(3,1,new QTableWidgetItem(btrDetailData.Model));
-        detailBTRTable->setItem(4,1,new QTableWidgetItem(btrDetailData.PowerSupply));
-        detailBTRTable->setItem(5,1,new QTableWidgetItem(btrDetailData.Refresh));
-        detailBTRTable->setItem(6,1,new QTableWidgetItem(btrDetailData.IsPresent));
-        detailBTRTable->setItem(7,1,new QTableWidgetItem(btrDetailData.IsRechargeable));
-        detailBTRTable->setItem(8,1,new QTableWidgetItem(btrDetailData.State));
-        detailBTRTable->setItem(9,1,new QTableWidgetItem(btrDetailData.Energy));
-        detailBTRTable->setItem(10,1,new QTableWidgetItem(btrDetailData.EnergyFull));
-        detailBTRTable->setItem(11,1,new QTableWidgetItem(btrDetailData.EnergyFullDesign));
-        detailBTRTable->setItem(12,1,new QTableWidgetItem(btrDetailData.EnergyRate));
-        detailBTRTable->setItem(13,1,new QTableWidgetItem(btrDetailData.Voltage));
-        detailBTRTable->setItem(14,1,new QTableWidgetItem(btrDetailData.TimeToFull));
-        detailBTRTable->setItem(15,1,new QTableWidgetItem(btrDetailData.TimeToEmpty));
-        detailBTRTable->setItem(16,1,new QTableWidgetItem(btrDetailData.Percentage));
-        detailBTRTable->setItem(17,1,new QTableWidgetItem(btrDetailData.Capacity));
-        QVBoxLayout *detailBTRLayout = new QVBoxLayout;
-        detailBTRLayout->addWidget(detailBTRTable);
-        detailBTR->setLayout(detailBTRLayout);
+        addListRow (tr("Present"), dev.IsPresent);
+    }
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MOUSE ||
+        dev.kind == UP_DEVICE_KIND_KEYBOARD) {
+
+        addListRow (tr("Rechargeable"), dev.IsRechargeable);
 
     }
-    else if(newKind == UP_DEVICE_KIND_COMPUTER)
-    {
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MOUSE ||
+        dev.kind == UP_DEVICE_KIND_KEYBOARD) {
 
+        addListRow (tr("State"), dev.State);
+
+    }
+    if (dev.kind == UP_DEVICE_KIND_BATTERY) {
+
+        addListRow (tr("Energy"), dev.Energy);
+        //addListRow (tr("Energy when empty"), dev.EnergyEmpty);
+        addListRow (tr("Energy when full"), dev.EnergyFull);
+        addListRow (tr("Energy (design)"), dev.EnergyFullDesign);
+    }
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MONITOR) {
+
+        addListRow (tr("Rate"), dev.EnergyRate);
+    }
+    if (dev.kind == UP_DEVICE_KIND_UPS ||
+        dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MONITOR) {
+
+        addListRow (tr("Voltage"), dev.Voltage);
+    }
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_UPS) {
+        if (dev.TimeToFull >= 0) {
+            addListRow (tr("Time to full"), dev.TimeToFull);
+
+        }
+        if (dev.TimeToEmpty >= 0) {
+            addListRow (tr("Time to empty"), dev.TimeToEmpty);
+
+        }
+    }
+    if (dev.kind == UP_DEVICE_KIND_BATTERY ||
+        dev.kind == UP_DEVICE_KIND_MOUSE ||
+        dev.kind == UP_DEVICE_KIND_KEYBOARD ||
+        dev.kind == UP_DEVICE_KIND_UPS) {
+
+        addListRow (tr("Percentage"), dev.Percentage);
+
+    }
+    if (dev.kind == UP_DEVICE_KIND_BATTERY) {
+
+        addListRow (tr("Capacity"), dev.Capacity);
+    }
+
+    if (dev.kind == UP_DEVICE_KIND_LINE_POWER) {
+        addListRow (tr("Online"), dev.Online);
+    }
+}
+
+void UkpmWidget::
+ukpm_update_info_data (DEV* device)
+{
+    int page;
+    bool has_history;
+    bool has_statistics;
+    has_history = device->hasHistory;
+    has_statistics = device->hasStat;
+    int index;
+
+    if (has_history)
+        tab_widget->addTab(his_widget,tr("history"));
+    else
+    {
+        index = tab_widget->indexOf(his_widget);
+        tab_widget->removeTab(index);
+    }
+    if (has_statistics)
+        tab_widget->addTab(stat_widget,tr("statistics"));
+    else
+    {
+        index = tab_widget->indexOf(stat_widget);
+        tab_widget->removeTab(index);
+    }
+
+    page = tab_widget->currentIndex();
+    index_old = page;
+//    qDebug()<<"ukpm_update_info_data: page="<<page;
+    ukpm_update_info_data_page (device, page);
+    return;
+}
+
+void UkpmWidget::ukpm_update_info_page_history (DEV* device)
+{
+    Q_UNUSED(device);
+    int index = spanCombox->currentIndex();
+    if(index == TENM)
+    {
+        timeSpan = 600;
+    }
+    else if(index == TWOH)
+    {
+        timeSpan = 2*60*60;
+    }
+    else if(index == SIXH)
+    {
+        timeSpan = 6*60*60;
+    }
+    else if(index == ONED)
+    {
+        timeSpan = 24*60*60;
+    }
+    else if(index == ONEW)
+    {
+        timeSpan = 7*24*60*60;
+    }
+    settings->setInt(GPM_SETTINGS_INFO_HISTORY_TIME,timeSpan);
+
+    QString type;
+    index = typeCombox->currentIndex();
+    if (index==RATE) {
+        current_device->type_x = GPM_GRAPH_WIDGET_TYPE_TIME;
+        current_device->type_y = GPM_GRAPH_WIDGET_TYPE_PERCENTAGE;
+        current_device->autorange_x = FALSE;
+        current_device->start_x = -timeSpan;
+        current_device->stop_x = 0;
+        current_device->autorange_y = FALSE;
+        current_device->start_y = 0;
+        current_device->stop_y = 100;
+        type = "rate";
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_RATE_VALUE);
+
+    } else if (index==VOLUME) {
+
+        current_device->type_x = GPM_GRAPH_WIDGET_TYPE_TIME;
+        current_device->type_y = GPM_GRAPH_WIDGET_TYPE_POWER;
+        current_device->autorange_x = FALSE;
+        current_device->start_x = -timeSpan;
+        current_device->stop_x = 0;
+        current_device->autorange_y = true;
+        type = "charge";
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_CHARGE_VALUE);
+
+    } else if (index==CHARGE_DURATION) {
+
+        current_device->type_x = GPM_GRAPH_WIDGET_TYPE_TIME;
+        current_device->type_y = GPM_GRAPH_WIDGET_TYPE_TIME;
+        current_device->autorange_x = FALSE;
+        current_device->start_x = -timeSpan;
+        current_device->stop_x = 0;
+        current_device->autorange_y = true;
+        type = "time-full";
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_TIME_FULL_VALUE);
+
+    }else if (index==DISCHARGING_DURATION) {
+
+        current_device->type_x = GPM_GRAPH_WIDGET_TYPE_TIME;
+        current_device->type_y = GPM_GRAPH_WIDGET_TYPE_TIME;
+        current_device->autorange_x = FALSE;
+        current_device->start_x = -timeSpan;
+        current_device->stop_x = 0;
+        current_device->autorange_y = true;
+        type = "time-empty";
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_TIME_EMPTY_VALUE);
+    }
+    QList<QPointF> list = getHistory(type,timeSpan);
+    if (list.size() == 0) {
+        return;
+    }
+    draw_history_graph(list);
+}
+
+void UkpmWidget::draw_stats_graph(QList<QPointF> list)
+{
+    int start_x = 0;
+    float max_y = 0;
+    QPointF pit;
+    QList<QPointF> data;
+    int index = sumTypeCombox->currentIndex();
+    if(index == CHARGE)
+    {
+        foreach(pit, list)
+        {
+            data.append(QPointF(start_x++,pit.x()));
+            if(max_y < fabs(pit.x()))
+                max_y = fabs(pit.x());
+        }
+        max_y = ceil(max_y);
+        sumSeries->replace(data);
+        sumSpline->replace(data);
+        y->setTitleText(tr("adjust factor"));
+        y->setRange(-max_y,+max_y);
+        y->setLabelFormat("%.1f");
+        x->setTitleText(tr("battery power"));
+        x->setRange(0,100);
+        x->setLabelFormat("%d%");
+        x->setTickCount(10);
+        y->setTickCount(10);
+
+    }
+    else if(index == CHARGE_ACCURENCY)
+    {
+        foreach(pit, list)
+        {
+            data.append(QPointF(start_x++,pit.y()));
+            if(max_y < (pit.y()))
+                max_y = (pit.y());
+        }
+        sumSeries->replace(data);
+        sumSpline->replace(data);
+        y->setTitleText(tr("Predict Accurency"));
+        y->setRange(0,max_y);
+        y->setLabelFormat("%d%");
+        x->setTitleText(tr("battery power"));
+        x->setRange(0,100);
+        x->setLabelFormat("%d%");
+        x->setTickCount(10);
+        y->setTickCount(10);
+    }
+    else if(index == DISCHARGING)
+    {
+        foreach(pit, list)
+        {
+            data.append(QPointF(start_x++,pit.x()));
+            if(max_y < fabs(pit.x()))
+                max_y = fabs(pit.x());
+        }
+        max_y = ceil(max_y);
+        sumSeries->replace(data);
+        sumSpline->replace(data);
+        y->setTitleText(tr("adjust factor"));
+        y->setRange(-max_y,+max_y);
+        y->setLabelFormat("%.1f");
+        x->setTitleText(tr("battery power"));
+        x->setRange(0,100);
+        x->setLabelFormat("%d%");
+        x->setTickCount(10);
+        y->setTickCount(10);
+    }
+    else if(index == DISCHARGING_ACCURENCY)
+    {
+        foreach(pit, list)
+        {
+            data.append(QPointF(start_x++,pit.y()));
+            if(max_y < (pit.y()))
+                max_y = (pit.y());
+        }
+        sumSeries->replace(data);
+        sumSpline->replace(data);
+        y->setTitleText(tr("Predict Accurency"));
+        y->setRange(0,max_y);
+        y->setLabelFormat("%d%");
+        x->setTitleText(tr("battery power"));
+        x->setRange(0,100);
+        x->setLabelFormat("%d%");
+        x->setTickCount(10);
+        y->setTickCount(10);
+    }
+
+    if(sumDataBox->isChecked())
+    {
+        if(sumCurveBox->isChecked())
+        {
+            sumSpline->setPointsVisible(true);
+            sumChart->removeSeries(sumSeries);
+            sumChart->addSeries(sumSpline);
+            sumSpline->attachAxis(x);//连接数据集与
+            sumSpline->attachAxis(y);//连接数据集与
+        }
+        else
+        {
+            sumSeries->setPointsVisible(true);
+            sumChart->removeSeries(sumSpline);
+            sumChart->addSeries(sumSeries);
+            sumSeries->attachAxis(x);//连接数据集与
+            sumSeries->attachAxis(y);//连接数据集与
+        }
     }
     else
     {
-        ;
+        if(sumCurveBox->isChecked())
+        {
+            sumSpline->setPointsVisible(false);
+            sumChart->removeSeries(sumSeries);
+            sumChart->addSeries(sumSpline);
+            sumSpline->attachAxis(x);//连接数据集与
+            sumSpline->attachAxis(y);//连接数据集与
+        }
+        else
+        {
+            sumSeries->setPointsVisible(false);
+            sumChart->removeSeries(sumSpline);
+            sumChart->addSeries(sumSeries);
+            sumSeries->attachAxis(x);//连接数据集与
+            sumSeries->attachAxis(y);//连接数据集与
+        }
+    }
+    sumStack->setCurrentIndex(1);
+}
+
+void UkpmWidget::draw_history_graph(QList<QPointF> list)
+{
+    QStringList labels;
+    uint max_y = 0;
+    uint min_y = 0;
+    int index = typeCombox->currentIndex();
+    //y
+    if (index==RATE) {
+        axisY->setTitleText(tr("Rate"));
+         labels = axisY->categoriesLabels();
+        foreach (QString str, labels) {
+            axisY->remove(str);
+        }
+        axisY->setMin(0.0);
+        axisY->setMax(10.0);
+        axisY->setStartValue(0.0);
+        for(int i = 0; i < 11; i++)
+        {
+            QString str;
+            str.sprintf("%.1fW",i*1.0);
+            axisY->append(str,i*1.0);
+        }
+        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+
+        hisSeries->replace(list);
+        hisSpline->replace(list);
+
+    } else if (index==VOLUME) {
+
+        axisY->setTitleText(tr("Charge"));
+
+         labels = axisY->categoriesLabels();
+        foreach (QString str, labels) {
+            axisY->remove(str);
+        }
+        axisY->setMin(0);
+        axisY->setMax(100);
+        axisY->setStartValue(0);
+        for(int i = 0; i < 11; i++)
+        {
+            QString str;
+            str.sprintf("%d%%",i*10);
+            axisY->append(str,i*10);
+        }
+        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
+
+    } else if (index==CHARGE_DURATION) {
+
+        axisY->setTitleText(tr("Predict Time"));
+         labels = axisY->categoriesLabels();
+        foreach (QString str, labels) {
+            axisY->remove(str);
+        }
+        int size = list.size();
+        min_y = max_y = list.at(0).y();
+        for(int i = 0; i< size; i++)
+        {
+            uint tmp = list.at(i).y();
+            if(min_y > tmp)
+                min_y = tmp;
+            if(max_y < tmp)
+                max_y = tmp;
+        }
+
+        min_y = floor(min_y/600.0) * 600;
+        max_y = ceil(max_y/600.0) * 600;
+
+        axisY->setMin(min_y);
+        axisY->setMax(max_y);
+        axisY->setStartValue(min_y);
+        for(int i = 0; i < 11; i++)
+        {
+            axisY->append(getWidgetAxis(min_y+i*(max_y-min_y)/10),min_y+i*(max_y-min_y)/10);
+        }
+        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
+
+    }else if (index==DISCHARGING_DURATION) {
+
+        axisY->setTitleText(tr("Predict Time"));
+         labels = axisY->categoriesLabels();
+        foreach (QString str, labels) {
+            axisY->remove(str);
+        }
+
+        int size = list.size();
+        min_y = max_y = list.at(0).y();
+        for(int i = 0; i< size; i++)
+        {
+            uint tmp = list.at(i).y();
+            if(min_y > tmp)
+                min_y = tmp;
+            if(max_y < tmp)
+                max_y = tmp;
+        }
+
+        min_y = floor(min_y/600.0) * 600;
+        max_y = ceil(max_y/600.0) * 600;
+
+        axisY->setMin(min_y);
+        axisY->setMax(max_y);
+        axisY->setStartValue(min_y);
+
+        for(int i = 0; i < 11; i++)
+        {
+            axisY->append(getWidgetAxis(min_y+i*(max_y-min_y)/10),min_y+i*(max_y-min_y)/10);
+        }
+        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+        hisSeries->replace(list);
+        hisSpline->replace(list);
+    }
+    //x
+    labels = xtime->categoriesLabels();
+    foreach (QString str, labels) {
+        xtime->remove(str);
+    }
+    xtime->setMin(0);
+    xtime->setMax(timeSpan);
+    xtime->setStartValue(0);
+    for(int i = 0; i < 11; i++)
+    {
+        xtime->append(getWidgetAxis(i*timeSpan/10),i*timeSpan/10);
+    }
+    xtime->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
+//    settings->setInt(GPM_SETTINGS_INFO_HISTORY_TIME,timeSpan);
+    hisStack->setCurrentIndex(1);
+
+    if(hisDataBox->isChecked())
+    {
+        if(hisCurveBox->isChecked())
+        {
+            hisSpline->setPointsVisible(true);
+            hisChart->removeSeries(hisSeries);
+            hisChart->addSeries(hisSpline);
+            hisSpline->attachAxis(xtime);//连接数据集与
+            hisSpline->attachAxis(axisY);//连接数据集与
+        }
+        else
+        {
+            hisSeries->setPointsVisible(true);
+            hisChart->removeSeries(hisSpline);
+            hisChart->addSeries(hisSeries);
+            hisSeries->attachAxis(xtime);//连接数据集与
+            hisSeries->attachAxis(axisY);//连接数据集与
+        }
+    }
+    else
+    {
+        if(hisCurveBox->isChecked())
+        {
+            hisSpline->setPointsVisible(false);
+            hisChart->removeSeries(hisSeries);
+            hisChart->addSeries(hisSpline);
+            hisSpline->attachAxis(xtime);//连接数据集与
+            hisSpline->attachAxis(axisY);//连接数据集与
+        }
+        else
+        {
+            hisSeries->setPointsVisible(false);
+            hisChart->removeSeries(hisSpline);
+            hisChart->addSeries(hisSeries);
+            hisSeries->attachAxis(xtime);//连接数据集与
+            hisSeries->attachAxis(axisY);//连接数据集与
+        }
     }
 
 }
 
-void UkpmWidget::setupDcUI()
+void UkpmWidget::ukpm_update_info_data_page (DEV* device, gint page)
 {
-    tabWidgetDC = new QTabWidget();
-    QWidget *DetailDc = new QWidget();
-    tabWidgetDC->addTab(DetailDc,QString());
-    tabWidgetDC->setTabText(0,tr("Detail"));
-    stackedWidget->addWidget(tabWidgetDC);
-    detailDcTable = new QTableWidget(4,2,DetailDc);
-    QStringList strList;
-    strList << tr("attribute") << tr("value");
-    detailDcTable->setHorizontalHeaderLabels(strList);
-    detailDcTable->setShowGrid(false);
-    detailDcTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
-    detailDcTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    detailDcTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
-    detailDcTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
-    detailDcTable->setItem(2,0,new QTableWidgetItem(tr("PowerSupply")));
-    detailDcTable->setItem(3,0,new QTableWidgetItem(tr("Online")));
-
-    detailDcTable->setItem(0,1,new QTableWidgetItem(dcDetailData.Device));
-    detailDcTable->setItem(1,1,new QTableWidgetItem(dcDetailData.Type));
-    detailDcTable->setItem(2,1,new QTableWidgetItem(dcDetailData.PowerSupply));
-    detailDcTable->setItem(3,1,new QTableWidgetItem(dcDetailData.Online));
-
-    detailDcTable->verticalHeader()->setVisible(false);
-    detailDcTable->horizontalHeader()->setStretchLastSection(true);
-
-    QVBoxLayout *detailDcLayout = new QVBoxLayout;
-    detailDcLayout->addWidget(detailDcTable);
-    DetailDc->setLayout(detailDcLayout);
-
+    if (page == 0)
+        ukpm_update_info_page_details (device);
+    else if (page == 1)
+        ukpm_update_info_page_history (device);
+    else if (page == 2)
+        ukpm_update_info_page_stats (device);
 }
 
-
-void UkpmWidget::setupBtrUI()
+void UkpmWidget::ukpm_update_info_page_stats (DEV* device)
 {
-    tabWidgetBTR = new QTabWidget();
-    QWidget *detailBTR = new QWidget();
-    tabWidgetBTR->addTab(detailBTR,QString());
-    tabWidgetBTR->setTabText(0,tr("Detail"));
-    stackedWidget->addWidget(tabWidgetBTR);
-    QStringList strList;
-    strList << tr("attribute") << tr("value");
-    detailBTRTable = new QTableWidget(18,2,detailBTR);
-    detailBTRTable->setHorizontalHeaderLabels(strList);
-    detailBTRTable->verticalHeader()->setVisible(false);
-    detailBTRTable->horizontalHeader()->setStretchLastSection(true);
-    detailBTRTable->setShowGrid(false);
-    detailBTRTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    detailBTRTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    Q_UNUSED(device);
+    QString type;
+    int index = sumTypeCombox->currentIndex();
 
-    detailBTRTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
-    detailBTRTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
-    detailBTRTable->setItem(2,0,new QTableWidgetItem(tr("Vendor")));
-    detailBTRTable->setItem(3,0,new QTableWidgetItem(tr("Model")));
-    detailBTRTable->setItem(4,0,new QTableWidgetItem(tr("PowerSupply")));
-    detailBTRTable->setItem(5,0,new QTableWidgetItem(tr("Refresh")));
-    detailBTRTable->setItem(6,0,new QTableWidgetItem(tr("IsPresent")));
-    detailBTRTable->setItem(7,0,new QTableWidgetItem(tr("IsRechargeable")));
-    detailBTRTable->setItem(8,0,new QTableWidgetItem(tr("State")));
-    detailBTRTable->setItem(9,0,new QTableWidgetItem(tr("Energy")));
-    detailBTRTable->setItem(10,0,new QTableWidgetItem(tr("EnergyFull")));
-    detailBTRTable->setItem(11,0,new QTableWidgetItem(tr("EnergyFullDesign")));
-    detailBTRTable->setItem(12,0,new QTableWidgetItem(tr("EnergyRate")));
-    detailBTRTable->setItem(13,0,new QTableWidgetItem(tr("Voltage")));
-    detailBTRTable->setItem(14,0,new QTableWidgetItem(tr("TimeToFull")));
-    detailBTRTable->setItem(15,0,new QTableWidgetItem(tr("TimeToEmpty")));
-    detailBTRTable->setItem(16,0,new QTableWidgetItem(tr("Percentage")));
-    detailBTRTable->setItem(17,0,new QTableWidgetItem(tr("Capacity")));
+    if(index == CHARGE)
+    {
+        type = "charging";
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_CHARGE_DATA_VALUE);
+    }
+    else if(index == CHARGE_ACCURENCY)
+    {
+        type = "charging";
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_CHARGE_ACCURACY_VALUE);
+    }
+    else if(index == DISCHARGING)
+    {
+        type = "discharging";
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_DISCHARGE_DATA_VALUE);
+    }
+    else if(index == DISCHARGING_ACCURENCY)
+    {
+        type = "discharging";
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_DISCHARGE_ACCURACY_VALUE);
+    }
 
-    detailBTRTable->setItem(0,1,new QTableWidgetItem(btrDetailData.Device));
-    detailBTRTable->setItem(1,1,new QTableWidgetItem(btrDetailData.Type));
-    detailBTRTable->setItem(2,1,new QTableWidgetItem(btrDetailData.Vendor));
-    detailBTRTable->setItem(3,1,new QTableWidgetItem(btrDetailData.Model));
-    detailBTRTable->setItem(4,1,new QTableWidgetItem(btrDetailData.PowerSupply));
-    detailBTRTable->setItem(5,1,new QTableWidgetItem(btrDetailData.Refresh));
-    detailBTRTable->setItem(6,1,new QTableWidgetItem(btrDetailData.IsPresent));
-    detailBTRTable->setItem(7,1,new QTableWidgetItem(btrDetailData.IsRechargeable));
-    detailBTRTable->setItem(8,1,new QTableWidgetItem(btrDetailData.State));
-    detailBTRTable->setItem(9,1,new QTableWidgetItem(btrDetailData.Energy));
-    detailBTRTable->setItem(10,1,new QTableWidgetItem(btrDetailData.EnergyFull));
-    detailBTRTable->setItem(11,1,new QTableWidgetItem(btrDetailData.EnergyFullDesign));
-    detailBTRTable->setItem(12,1,new QTableWidgetItem(btrDetailData.EnergyRate));
-    detailBTRTable->setItem(13,1,new QTableWidgetItem(btrDetailData.Voltage));
-    detailBTRTable->setItem(14,1,new QTableWidgetItem(btrDetailData.TimeToFull));
-    detailBTRTable->setItem(15,1,new QTableWidgetItem(btrDetailData.TimeToEmpty));
-    detailBTRTable->setItem(16,1,new QTableWidgetItem(btrDetailData.Percentage));
-    detailBTRTable->setItem(17,1,new QTableWidgetItem(btrDetailData.Capacity));
-
-
-    QVBoxLayout *detailBTRLayout = new QVBoxLayout;
-    detailBTRLayout->addWidget(detailBTRTable);
-    detailBTR->setLayout(detailBTRLayout);
-
-    setHistoryTab();
-    setSumTab();
-
-}
-
-void UkpmWidget::initUI()
-{
-    QDesktopWidget *deskdop = QApplication::desktop();
-//    resize(deskdop->width()/2,deskdop->height()/2);
-    resize(900,580);
-    move((deskdop->width() - this->width())/2, (deskdop->height() - this->height())/2);
-//    setWindowFlags(windowFlags()&~Qt::WindowMaximizeButtonHint);
-//    setWindowTitle(tr("Power Statistics"));
-    setWindowFlags(Qt::FramelessWindowHint);
-//    setWindowFlags(Qt::FramelessWindowHint|Qt::WindowMinimizeButtonHint);
-    QSplitter *mainsplitter = new QSplitter(Qt::Horizontal,this);//splittering into two parts
-    listWidget = new QListWidget(mainsplitter);
-    listWidget->setObjectName("m_listWidget");
-    listWidget->setSpacing(10);
-    stackedWidget =  new QStackedWidget(mainsplitter);
-
-    mainsplitter->setStretchFactor(1,4);
-//    mainsplitter->setFrameStyle();
-    QVBoxLayout *vlayout = new QVBoxLayout;
-    vlayout->setContentsMargins(5,0,40,0);
-    QFrame *header = new QFrame(this);
-    header->setFixedHeight(TITLE_HEIGHT);
-    header->setWindowFlags(Qt::FramelessWindowHint);
-    vlayout->addWidget(header);
-    vlayout->addWidget(mainsplitter);
-
-//    QHBoxLayout *hlayout = new QHBoxLayout;
-//    helpButton = new QToolButton;
-//    helpButton->setText(tr("help"));
-//    helpButton->setIcon(QIcon(":/dc.png"));
-//    exitButton = new QToolButton;
-//    helpButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-//    exitButton->setText(tr("exit"));
-//    exitButton->setIcon(QIcon(":/dc.png"));
-//    exitButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-//    hlayout->addWidget(helpButton);
-//    hlayout->addStretch();
-//    hlayout->addWidget(exitButton);
-//    vlayout->addLayout(hlayout);
-    setLayout(vlayout);//main layout of the UI
-    title = new TitleWidget(this);
-    title->move(0,0);
+    QList<QPointF> list = getStatics(type);
+    if (list.size() == 0) {
+        return;
+    }
+    draw_stats_graph (list);
 }
 
 void UkpmWidget::setSumTab()
 {
-    QWidget *tabSumBTR = new QWidget();
-    tabSumBTR->setContentsMargins(0,30,0,25);
-    tabWidgetBTR->addTab(tabSumBTR,QString());
-    tabWidgetBTR->setTabText(2,tr("Statistics"));
-
-    QLabel *graphicType = new QLabel(tr("graphic type:"),tabSumBTR);
+    stat_widget = new QWidget(this);
+    QLabel *graphicType = new QLabel(tr("graphic type:"),stat_widget);
     graphicType->setObjectName("m_sumGraphicType");
-    sumTypeCombox = new QComboBox(tabSumBTR);
+    sumTypeCombox = new QComboBox(stat_widget);
     sumTypeCombox->addItems(QStringList()<<tr("charge")<<tr("charge-accurency")<<tr("discharge")<<tr("discharge-accurency"));
 
     QListView * listView = new QListView(sumTypeCombox);
     listView->setStyleSheet("QListView::item:selected {background: #EDEDED }");
     sumTypeCombox->setView(listView);
-    sumCurveBox = new QCheckBox(tr("spline"),tabSumBTR);
-    sumDataBox = new QCheckBox(tr("show datapoint"),tabSumBTR);
+    sumCurveBox = new QCheckBox(tr("spline"),stat_widget);
+    sumDataBox = new QCheckBox(tr("show datapoint"),stat_widget);
     sumCurveBox->setFixedSize(110,24);
     sumDataBox->setFixedSize(110,24);
     QHBoxLayout *bottomLayout = new QHBoxLayout;
     QFormLayout *topFormLayout = new QFormLayout;
-//    QWidget *topchild = new QWidget;
+
     graphicType->setFixedWidth(80);
     sumTypeCombox->setFixedWidth(200);
     topFormLayout->addRow(graphicType,sumTypeCombox);
     topFormLayout->setSpacing(0);
-//    topLayout->addLayout(topFormLayout,1);
-//    topLayout->addWidget(topchild,1);
-//    topLayout->setSpacing(200);
+
     sumChart = new QChart;
 
     x = new QValueAxis;
@@ -653,18 +972,9 @@ void UkpmWidget::setSumTab()
 
     sumSeries = new QLineSeries();
     sumSpline = new QSplineSeries();
-
-    sumChart->addSeries(sumSpline);
     sumChart->setAxisX(x);
     sumChart->setAxisY(y);
-    sumSpline->attachAxis(x);//连接数据集与轴
-    sumSpline->attachAxis(y);//连接数据集与轴
 
-    sumSeries->setPointsVisible(true);
-    sumSpline->setPointsVisible(true);
-
-//    x->setGridLinePen(Qt::DotLine);
-//    y->setGridLinePen(Qt::DotLine);
     QFont font("Times");
     font.setPixelSize(12);
     x->setLabelsFont(font);
@@ -674,13 +984,6 @@ void UkpmWidget::setSumTab()
     y->setTitleFont(font);
 
     sumChart->legend()->hide();
-//    sumChart->setAnimationOptions(QChart::SeriesAnimations);
-//    QLinearGradient plotGradient;
-//    plotGradient.setStart(QPointF(0,0));
-//    plotGradient.setFinalStop(QPointF(1,0));
-//    plotGradient.setColorAt(0.0,QRgb(0x42ec88));
-//    plotGradient.setColorAt(1.0,QRgb(0xe22524));
-//    plotGradient.setCoordinateMode(QGradient::ObjectBoundingMode);
 
     sumChart->setPlotAreaBackgroundBrush(plotcolor);
     sumChart->setPlotAreaBackgroundVisible(true);
@@ -706,58 +1009,92 @@ void UkpmWidget::setSumTab()
     vLayout->addLayout(topFormLayout);
     vLayout->addWidget(sumStack);
     vLayout->addLayout(bottomLayout);
-    tabSumBTR->setLayout(vLayout);
-
+    stat_widget->setLayout(vLayout);
+    stat_widget->hide();
 }
 void UkpmWidget::showHisDataPoint(bool flag)
 {
     settings->setBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_POINTS,flag);
+    QList<QAbstractSeries *> ses = hisChart->series();
     if(flag)
     {
-        hisSeries->setPointsVisible(true);
-        hisSpline->setPointsVisible(true);
+        foreach (QAbstractSeries *item, ses) {
+            QLineSeries *tmp = (QLineSeries*)item;
+            tmp->setPointsVisible(true);
+        }
+
     }
     else
     {
-        hisSeries->setPointsVisible(false);
-        hisSpline->setPointsVisible(false);
+        foreach (QAbstractSeries *item, ses) {
+            QLineSeries *tmp = (QLineSeries*)item;
+            tmp->setPointsVisible(false);
+        }
     }
-
 }
 
 void UkpmWidget::showSumDataPoint(bool flag)
 {
     settings->setBool(GPM_SETTINGS_INFO_STATS_GRAPH_POINTS,flag);
 
+    QList<QAbstractSeries *> ses = sumChart->series();
     if(flag)
     {
-        sumSeries->setPointsVisible(true);
-        sumSpline->setPointsVisible(true);
+//        qDebug()<<"showSumDataPoint---true";
+        foreach (QAbstractSeries *item, ses) {
+            QLineSeries *tmp = (QLineSeries*)item;
+            tmp->setPointsVisible(true);
+        }
+
     }
     else
     {
-        sumSeries->setPointsVisible(false);
-        sumSpline->setPointsVisible(false);
+        foreach (QAbstractSeries *item, ses) {
+            QLineSeries *tmp = (QLineSeries*)item;
+            tmp->setPointsVisible(false);
+        }
     }
+}
+
+void UkpmWidget::setDetailTab()
+{
+    detail_widget = new QWidget(this);
+    tab_widget->addTab(detail_widget,tr("detail"));
+
+    tableView  = new QTableView();
+    tableView->horizontalHeader()->setStretchLastSection(true);
+    tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    tableView->verticalHeader()->hide();
+    //背景网格线设置
+    //显示
+    tableView->setShowGrid(false);
+    //网格背景画笔
+    //ui->tableView->setGridStyle(Qt::DashLine);
+    tableView->setGridStyle(Qt::DotLine);
+    //排序功能
+    tableView->setSortingEnabled(true);
+    model = new QStandardItemModel();
+
+    tableView->setModel(model);
+    QVBoxLayout *lay = new QVBoxLayout();
+    lay->addWidget(tableView);
+    detail_widget->setLayout(lay);
 
 }
 
 void UkpmWidget::setHistoryTab()
 {
-    QWidget *tabHisBTR = new QWidget();
-    tabHisBTR->setObjectName("tabHisBTR");
-    tabHisBTR->setContentsMargins(0,30,0,25);
-    tabWidgetBTR->addTab(tabHisBTR,QString());
-    tabWidgetBTR->setTabText(1,tr("History"));
-    QLabel *graphicType = new QLabel(tr("graphic type:"),tabHisBTR);
+    his_widget = new QWidget(this);
+    QLabel *graphicType = new QLabel(tr("graphic type:"),his_widget);
     graphicType->setScaledContents(true);
-    QLabel *timeLabel = new QLabel(tr("time span:"),tabHisBTR);
+    QLabel *timeLabel = new QLabel(tr("time span:"),his_widget);
     graphicType->setObjectName("m_graphicType");
     timeLabel->setObjectName("m_timeLabel");
-    typeCombox = new QComboBox(tabHisBTR);
+
+    typeCombox = new QComboBox(his_widget);
     typeCombox->addItems(QStringList()<<tr("rate")<<tr("energy")<<tr("charge-time")<<tr("discharge-time"));
     typeCombox->setObjectName("m_typeCombox");
-    spanCombox = new QComboBox(tabHisBTR);
+    spanCombox = new QComboBox(his_widget);
     spanCombox->addItems(QStringList()<<tr("ten minutes")<<tr("two hours")<<tr("six hours")<<tr("one day")<<tr("one week"));
     graphicType->setFixedWidth(80);
     typeCombox->setFixedWidth(200);
@@ -771,8 +1108,8 @@ void UkpmWidget::setHistoryTab()
     spanView->setStyleSheet("QListView::item:selected {background: #EDEDED }");
     spanCombox->setView(spanView);
 
-    hisCurveBox = new QCheckBox(tr("spline"),tabHisBTR);
-    hisDataBox = new QCheckBox(tr("show datapoint"),tabHisBTR);
+    hisCurveBox = new QCheckBox(tr("spline"),his_widget);
+    hisDataBox = new QCheckBox(tr("show datapoint"),his_widget);
     hisCurveBox->setFixedSize(110,24);
     hisDataBox->setFixedSize(110,24);
     QVBoxLayout *checkpad = new QVBoxLayout;
@@ -800,7 +1137,7 @@ void UkpmWidget::setHistoryTab()
 
     hisSeries = new QLineSeries();
     hisSpline = new QSplineSeries();
-    hisChart->addSeries(hisSpline);
+//    hisChart->addSeries(hisSpline);
 
     xtime = new QCategoryAxis();//轴变量、数据系列变量，都不能声明为局部临时变量
     axisY = new QCategoryAxis();
@@ -815,22 +1152,9 @@ void UkpmWidget::setHistoryTab()
     axisY->setTitleFont(font);
     hisChart->setAxisX(xtime);
     hisChart->setAxisY(axisY);
-//    axisY->setGridLinePen(Qt::DotLine);
-//    xtime->setGridLinePen(Qt::DotLine);
-    hisSpline->attachAxis(xtime);//连接数据集与轴
-
-    hisSpline->attachAxis(axisY);
-    hisSeries->setPointsVisible(true);
-    hisSpline->setPointsVisible(true);
 
     hisChart->legend()->hide();
-//    hisChart->setAnimationOptions(QChart::SeriesAnimations);
-//    QLinearGradient plotGradient;
-//    plotGradient.setStart(QPointF(0,0));
-//    plotGradient.setFinalStop(QPointF(1,0));
-//    plotGradient.setColorAt(0.0,QRgb(0x42ec88));
-//    plotGradient.setColorAt(1.0,QRgb(0xe22524));
-//    plotGradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+
     hisChart->setPlotAreaBackgroundBrush(plotcolor);
     hisChart->setPlotAreaBackgroundVisible(true);
     hisChartView = new QChartView(hisChart);
@@ -846,179 +1170,10 @@ void UkpmWidget::setHistoryTab()
     vLayout->addLayout(topLayout);
     vLayout->addWidget(hisStack);
     vLayout->addLayout(bottomLayout);
-    tabHisBTR->setLayout(vLayout);
+    his_widget->setLayout(vLayout);
+    his_widget->hide();
 }
 
-void UkpmWidget::updateSumChart(int index)
-{
-    qDebug()<<"updateSumchart:"<<index;
-    QString sumType;
-    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",batterySvr,
-            "org.freedesktop.UPower.Device","GetStatistics");
-    QList<QPointF> list;
-    QList<QPointF> data;
-    QPointF pit;
-    int start_x = 0;
-    float max_y = 0;
-    if(index == CHARGE)
-    {
-        sumType = GPM_STATS_CHARGE_DATA_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
-
-        msg << "charging";
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            printf("get %d arg from bus!\n",res.arguments().count());
-            QDBusArgument dbusArg = res.arguments().at(0).value<QDBusArgument>();
-            dbusArg >> list;
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-
-        }
-        if(list.isEmpty())
-        {
-            sumStack->setCurrentIndex(0);
-            return;
-        }
-        foreach(pit, list)
-        {
-            data.append(QPointF(start_x++,pit.x()));
-            if(max_y < fabs(pit.x()))
-                max_y = fabs(pit.x());
-        }
-        max_y = ceil(max_y);
-        sumSeries->replace(data);
-        sumSpline->replace(data);
-        y->setTitleText(tr("adjust factor"));
-        y->setRange(-max_y,+max_y);
-        y->setLabelFormat("%.1f");
-        x->setTitleText(tr("battery power"));
-        x->setRange(0,100);
-        x->setLabelFormat("%d%");
-        x->setTickCount(10);
-        y->setTickCount(10);
-
-    }
-    else if(index == CHARGE_ACCURENCY)
-    {
-        sumType = GPM_STATS_CHARGE_ACCURACY_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
-
-        msg << "charging";
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            QDBusArgument dbusArg = res.arguments().at(0).value<QDBusArgument>();
-            dbusArg >> list;
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-
-        }
-        if(list.isEmpty())
-        {
-            sumStack->setCurrentIndex(0);
-            return;
-        }
-        foreach(pit, list)
-        {
-            data.append(QPointF(start_x++,pit.y()));
-            if(max_y < (pit.y()))
-                max_y = (pit.y());
-        }
-        sumSeries->replace(data);
-        sumSpline->replace(data);
-        y->setTitleText(tr("Predict Accurency"));
-        y->setRange(0,max_y);
-        y->setLabelFormat("%d%");
-        x->setTitleText(tr("battery power"));
-        x->setRange(0,100);
-        x->setLabelFormat("%d%");
-        x->setTickCount(10);
-        y->setTickCount(10);
-    }
-    else if(index == DISCHARGING)
-    {
-        sumType = GPM_STATS_DISCHARGE_DATA_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
-
-        msg << "discharging";
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            QDBusArgument dbusArg = res.arguments().at(0).value<QDBusArgument>();
-            dbusArg >> list;
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-
-        }
-        if(list.isEmpty())
-        {
-            sumStack->setCurrentIndex(0);
-            return;
-        }
-        foreach(pit, list)
-        {
-            data.append(QPointF(start_x++,pit.x()));
-            if(max_y < fabs(pit.x()))
-                max_y = fabs(pit.x());
-        }
-        max_y = ceil(max_y);
-        sumSeries->replace(data);
-        sumSpline->replace(data);
-        y->setTitleText(tr("adjust factor"));
-        y->setRange(-max_y,+max_y);
-        y->setLabelFormat("%.1f");
-        x->setTitleText(tr("battery power"));
-        x->setRange(0,100);
-        x->setLabelFormat("%d%");
-        x->setTickCount(10);
-        y->setTickCount(10);
-    }
-    else if(index == DISCHARGING_ACCURENCY)
-    {
-        sumType = GPM_STATS_DISCHARGE_ACCURACY_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
-
-        msg << "discharging";
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            QDBusArgument dbusArg = res.arguments().at(0).value<QDBusArgument>();
-            dbusArg >> list;
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-
-        }
-        if(list.isEmpty())
-        {
-            sumStack->setCurrentIndex(0);
-            return;
-        }
-        foreach(pit, list)
-        {
-            data.append(QPointF(start_x++,pit.y()));
-            if(max_y < (pit.y()))
-                max_y = (pit.y());
-        }
-        sumSeries->replace(data);
-        sumSpline->replace(data);
-        y->setTitleText(tr("Predict Accurency"));
-        y->setRange(0,max_y);
-        y->setLabelFormat("%d%");
-        x->setTitleText(tr("battery power"));
-        x->setRange(0,100);
-        x->setLabelFormat("%d%");
-        x->setTickCount(10);
-        y->setTickCount(10);
-    }
-    sumStack->setCurrentIndex(1);
-
-}
 void UkpmWidget::onExitButtonClicked()
 {
     close();
@@ -1026,24 +1181,45 @@ void UkpmWidget::onExitButtonClicked()
 
 void UkpmWidget::onHelpButtonClicked()
 {
-
+    ;
 }
 
-void UkpmWidget::callFinishedSlot(QDBusPendingCallWatcher* call)
+QList<QPointF> UkpmWidget::getStatics(QString stat_type)
 {
-    QDBusPendingReply<QList<QDBusVariant>> reply = *call;
-    if(!reply.isError()){
-        QList<QDBusVariant> listQDBus;
-        listQDBus= reply.argumentAt<0>();
-        qDebug()<<"dsfdsfs";
+    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",current_device->path,
+            "org.freedesktop.UPower.Device","GetStatistics");
+    QList<QPointF> list;
+//    QString sumType;
+//    QList<QPointF> data;
+//    QPointF pit;
+//    int start_x = 0;
+//    float max_y = 0;
+//    sumType = GPM_STATS_CHARGE_DATA_VALUE;
+//    settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,sumType);
+
+    msg << stat_type;
+    QDBusMessage res = QDBusConnection::systemBus().call(msg);
+    if(res.type() == QDBusMessage::ReplyMessage)
+    {
+        printf("get %d arg from bus!\n",res.arguments().count());
+        QDBusArgument dbusArg = res.arguments().at(0).value<QDBusArgument>();
+        dbusArg >> list;
     }
-    call->deleteLater();
+    else {
+        qDebug()<<"error of qdbus reply";
+
+    }
+    if(list.isEmpty())
+    {
+        sumStack->setCurrentIndex(0);
+    }
+
+    return  list;
 }
 
-void UkpmWidget::updateHisType(int index)
+QList<QPointF> UkpmWidget::getHistory(QString type, uint timeSpan)
 {
-    QString hisType;
-    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",batterySvr,
+    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",current_device->path,
             "org.freedesktop.UPower.Device","GetHistory");
     QList<QPointF> list;
     QList<StructUdu> listQDBus;
@@ -1051,245 +1227,41 @@ void UkpmWidget::updateHisType(int index)
     uint size;
     QPointF temp;
     QDBusArgument argument;
-    mHISTYPE = (HISTYPE)index;
     struct timeval tv;
     gettimeofday(&tv,NULL);
-    uint max_y = 0;
-    uint min_y = 0;
-    bool first_run = true;
+//    uint max_y = 0;
+//    uint min_y = 0;
+//    bool first_run = true;
     resolution = 150;
-    if(index == RATE)
+//    settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,type);
+    msg << type << timeSpan << resolution;
+    QDBusMessage res = QDBusConnection::systemBus().call(msg);
+    if(res.type() == QDBusMessage::ReplyMessage)
     {
-        hisType = GPM_HISTORY_RATE_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
-
-        msg << "rate" << timeSpan << resolution;
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
+        variant = res.arguments().at(0);
+        argument = variant.value<QDBusArgument>();
+        argument >> listQDBus;
+        size = listQDBus.size();
+//        qDebug()<<"size="<<size<<"span="<<timeSpan;
+        for(uint i = 0; i< size; i++)
         {
-            variant = res.arguments().at(0);
-            argument = variant.value<QDBusArgument>();
-            argument >> listQDBus;
-            size = listQDBus.size();
-            qDebug()<<"size="<<size<<"span="<<timeSpan;
-            for(uint i = 0; i< size; i++)
-            {
-                if(listQDBus[i].state == 0)
-                    continue;
-                temp.setX(tv.tv_sec - listQDBus[i].time);
-                temp.setY(listQDBus[i].value);
-                list.append(temp);
-            }
+            if(listQDBus[i].state == 0)
+                continue;
+            temp.setX(tv.tv_sec - listQDBus[i].time);
+            temp.setY(listQDBus[i].value);
+            list.append(temp);
         }
-        else {
-            qDebug()<<"error of qdbus reply";
-        }
-        if(list.isEmpty())
-        {
-            hisStack->setCurrentIndex(0);
-            return;
-        }
-//        hisSeries->replace(list);
-//        hisSpline->replace(list);
-        axisY->setTitleText(tr("Rate"));
-
-        QStringList labels = axisY->categoriesLabels();
-        foreach (QString str, labels) {
-            axisY->remove(str);
-        }
-        axisY->setMin(0.0);
-        axisY->setMax(10.0);
-        axisY->setStartValue(0.0);
-        for(int i = 0; i < 11; i++)
-        {
-            QString str;
-            str.sprintf("%.1fW",i*1.0);
-            axisY->append(str,i*1.0);
-        }
-        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
-        hisSeries->replace(list);
-        hisSpline->replace(list);
     }
-    else if(index == VOLUME)
+    else {
+        qDebug()<<"gethistory:error of qdbus reply";
+    }
+    if(list.isEmpty())
     {
-        hisType = GPM_HISTORY_CHARGE_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
-
-        msg << "charge" << timeSpan << resolution;
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            variant = res.arguments().at(0);
-            argument = variant.value<QDBusArgument>();
-            argument >> listQDBus;
-            size = listQDBus.size();
-            for(uint i = 0; i< size; i++)
-            {
-                if(listQDBus[i].state == 0)
-                    continue;
-                temp.setX(tv.tv_sec - listQDBus[i].time);
-                temp.setY(listQDBus[i].value);
-                list.append(temp);
-            }
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-        }
-        if(list.isEmpty())
-        {
-            hisStack->setCurrentIndex(0);
-            return;
-        }
-
-        axisY->setTitleText(tr("Charge"));
-
-        QStringList labels = axisY->categoriesLabels();
-        foreach (QString str, labels) {
-            axisY->remove(str);
-        }
-        axisY->setMin(0);
-        axisY->setMax(100);
-        axisY->setStartValue(0);
-        for(int i = 0; i < 11; i++)
-        {
-            QString str;
-            str.sprintf("%d%%",i*10);
-            axisY->append(str,i*10);
-        }
-        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
-        hisSeries->replace(list);
-        hisSpline->replace(list);
+        hisStack->setCurrentIndex(0);
     }
-    else if(index == CHARGE_DURATION)
-    {
-        hisType = GPM_HISTORY_TIME_FULL_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
 
-        msg << "time-full" << timeSpan << resolution;
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            variant = res.arguments().at(0);
-            argument = variant.value<QDBusArgument>();
-            argument >> listQDBus;
-            size = listQDBus.size();
-            for(uint i = 0; i< size; i++)
-            {
-                if(listQDBus[i].state == 0)
-                    continue;
-                temp.setX(tv.tv_sec - listQDBus[i].time);
-                temp.setY(listQDBus[i].value);
-                if(first_run)
-                {
-                    min_y = temp.y();
-                    first_run = false;
-                }
-                if(min_y > temp.y())
-                    min_y = temp.y();
-                if(max_y < temp.y())
-                    max_y = temp.y();
-
-                list.append(temp);
-            }
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-        }
-        if(list.isEmpty())
-        {
-            hisStack->setCurrentIndex(0);
-            return;
-        }
-
-        axisY->setTitleText(tr("Predict Time"));
-        QStringList labels = axisY->categoriesLabels();
-        foreach (QString str, labels) {
-            axisY->remove(str);
-        }
-        min_y = floor(min_y/600.0) * 600;
-        max_y = ceil(max_y/600.0) * 600;
-
-        axisY->setMin(min_y);
-        axisY->setMax(max_y);
-        axisY->setStartValue(min_y);
-        for(int i = 0; i < 11; i++)
-        {
-            axisY->append(getWidgetAxis(min_y+i*(max_y-min_y)/10),min_y+i*(max_y-min_y)/10);
-        }
-        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
-        hisSeries->replace(list);
-        hisSpline->replace(list);
-    }
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    else if(index == DISCHARGING_DURATION)
-    {
-        hisType = GPM_HISTORY_TIME_EMPTY_VALUE;
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,hisType);
-
-        msg << "time-empty" << timeSpan << resolution;
-        QDBusMessage res = QDBusConnection::systemBus().call(msg);
-        if(res.type() == QDBusMessage::ReplyMessage)
-        {
-            variant = res.arguments().at(0);
-            argument = variant.value<QDBusArgument>();
-            argument >> listQDBus;
-            size = listQDBus.size();
-//            qDebug()<<"timespan:"<<timeSpan<<size;
-
-            for(uint i = 0; i< size; i++)
-            {
-                if(listQDBus[i].state == 0)
-                    continue;
-
-                temp.setX(tv.tv_sec - listQDBus[i].time);
-                temp.setY(listQDBus[i].value);
-                if(first_run)
-                {
-                    min_y = temp.y();
-                    first_run = false;
-                }
-                if(min_y > temp.y())
-                    min_y = temp.y();
-                if(max_y < temp.y())
-                    max_y = temp.y();
-
-                list.append(temp);
-            }
-        }
-        else {
-            qDebug()<<"error of qdbus reply";
-        }
-        if(list.isEmpty())
-        {
-            hisStack->setCurrentIndex(0);
-            return;
-        }
-
-        axisY->setTitleText(tr("Predict Time"));
-
-        QStringList labels = axisY->categoriesLabels();
-        foreach (QString str, labels) {
-            axisY->remove(str);
-        }
-
-        min_y = floor(min_y/600.0) * 600;
-        max_y = ceil(max_y/600.0) * 600;
-
-        axisY->setMin(min_y);
-        axisY->setMax(max_y);
-        axisY->setStartValue(min_y);
-
-        for(int i = 0; i < 11; i++)
-        {
-            axisY->append(getWidgetAxis(min_y+i*(max_y-min_y)/10),min_y+i*(max_y-min_y)/10);
-        }
-        axisY->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
-        hisSeries->replace(list);
-        hisSpline->replace(list);
-    }
-    hisStack->setCurrentIndex(1);
+    return  list;
 }
-
 
 QString UkpmWidget::getWidgetAxis(uint value)
 {
@@ -1330,98 +1302,49 @@ QString UkpmWidget::getWidgetAxis(uint value)
 
 }
 
-void UkpmWidget::updateHisChart(int index)
-{
-    if(index == TENM)
-    {
-        timeSpan = 600;
-    }
-    else if(index == TWOH)
-    {
-        timeSpan = 2*60*60;
-    }
-    else if(index == SIXH)
-    {
-        timeSpan = 6*60*60;
-    }
-    else if(index == ONED)
-    {
-        timeSpan = 24*60*60;
-    }
-    else if(index == ONEW)
-    {
-        timeSpan = 7*24*60*60;
-    }
-
-    QStringList labels = xtime->categoriesLabels();
-    foreach (QString str, labels) {
-        xtime->remove(str);
-    }
-    xtime->setMin(0);
-    xtime->setMax(timeSpan);
-    xtime->setStartValue(0);
-    for(int i = 0; i < 11; i++)
-    {
-        xtime->append(getWidgetAxis(i*timeSpan/10),i*timeSpan/10);
-    }
-    xtime->setLabelsPosition(QCategoryAxis::AxisLabelsPositionOnValue);
-    settings->setInt(GPM_SETTINGS_INFO_HISTORY_TIME,timeSpan);
-    updateHisType(mHISTYPE);
-
-}
 void UkpmWidget::sortDcTable(int id)
 {
-    detailDcTable->sortByColumn(id,Qt::AscendingOrder);
+//    detailDcTable->sortByColumn(id,Qt::AscendingOrder);
 }
 
 void UkpmWidget::sortBtrTable(int id)
 {
-    detailBTRTable->sortByColumn(id,Qt::AscendingOrder);
+//    detailBTRTable->sortByColumn(id,Qt::AscendingOrder);
 }
 
-void UkpmWidget::onListChanged(int row)
+
+void UkpmWidget::onItemChanged(QListWidgetItem* cur,QListWidgetItem* pre)
 {
-    stackedWidget->setCurrentIndex(row);
-    if(1 == row)
-    {
-        getDcDetail();
-        detailDcTable->item(0,1)->setText(dcDetailData.Device);
-        detailDcTable->item(1,1)->setText(dcDetailData.Type);
-        detailDcTable->item(2,1)->setText(dcDetailData.PowerSupply);
-        detailDcTable->item(3,1)->setText(dcDetailData.Online);
-    }
+    Q_UNUSED(pre);
+    current_device = dev_item.key(cur)->m_dev;
+    //qDebug()<<"onItemChanged";
+    ukpm_update_info_data(current_device);
 }
 
-void UkpmWidget::connectSlots()
+void UkpmWidget::getSlots()
 {
-    if(devices.size() == 0)
-	return;
-
-    QDBusConnection::systemBus().connect(DBUS_SERVICE,batterySvr,DBUS_INTERFACE,
-                                         QString("PropertiesChanged"),this,SLOT(btrPropertiesChanged(QDBusMessage)));
-    QDBusConnection::systemBus().connect(DBUS_SERVICE,acSvr,DBUS_INTERFACE,
-                                         QString("PropertiesChanged"),this,SLOT(acPropertiesChanged(QDBusMessage)));
-
-    /*QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
+    QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
                                          QString("device-added"),this,SLOT(deviceAdded(QDBusMessage)));
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
-                                         QString("device-removed"),this,SLOT(deviceRemoved(QDBusMessage)));*/
+                                         QString("device-removed"),this,SLOT(deviceRemoved(QDBusMessage)));
 
-    connect(listWidget,SIGNAL(currentRowChanged(int)),this,SLOT(onListChanged(int)));
-    connect(typeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateHisType(int)));
-    connect(spanCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateHisChart(int)));
-    connect(sumTypeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(updateSumChart(int)));
-    connect(title,SIGNAL(signalButtonCloseClicked()),this,SLOT(onExitButtonClicked()));
-    connect(sumDataBox,SIGNAL(clicked(bool)),this,SLOT(showSumDataPoint(bool)));
+    connect(listWidget,SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)),this,SLOT(onItemChanged(QListWidgetItem*,QListWidgetItem*)));
+    connect(tab_widget,SIGNAL(currentChanged(int)),this,SLOT(onPageChanged(int)));
+    connect(typeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(upHistoryType(int)));
+    connect(spanCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(upHistoryType(int)));
+    connect(sumTypeCombox,SIGNAL(currentIndexChanged(int)),this,SLOT(upStatsType(int)));
+
+    connect(sumDataBox,SIGNAL(toggled(bool)),this,SLOT(showSumDataPoint(bool)));
     connect(hisDataBox,SIGNAL(clicked(bool)),this,SLOT(showHisDataPoint(bool)));
-    connect(hisCurveBox,SIGNAL(clicked(bool)),this,SLOT(drawHisSpineline(bool)));
-    connect(sumCurveBox,SIGNAL(clicked(bool)),this,SLOT(drawSumSpineline(bool)));
+    connect(hisCurveBox,SIGNAL(toggled(bool)),this,SLOT(drawHisSpineline(bool)));
+    connect(sumCurveBox,SIGNAL(toggled(bool)),this,SLOT(drawSumSpineline(bool)));
     connect(title,SIGNAL(signalButtonHelpClicked()),this,SLOT(helpFormat()));
-    connect(tabWidgetBTR,SIGNAL(currentChanged(int)),this,SLOT(onBtrPageChanged(int)));
+    connect(title,SIGNAL(signalButtonCloseClicked()),this,SLOT(onExitButtonClicked()));
 
+    ////
     bool checked;
-    uint page = settings->getInt(GPM_SETTINGS_INFO_PAGE_NUMBER);
-    tabWidgetBTR->setCurrentIndex(page);
+//    uint page = settings->getInt(GPM_SETTINGS_INFO_PAGE_NUMBER);
+//    tabWidgetBTR->setCurrentIndex(page);
 
     QString history_type = settings->getString(GPM_SETTINGS_INFO_HISTORY_TYPE);
     int history_time = settings->getInt(GPM_SETTINGS_INFO_HISTORY_TIME);
@@ -1456,8 +1379,8 @@ void UkpmWidget::connectSlots()
     else
         sumTypeCombox->setCurrentIndex(3);
 
-    Q_EMIT sumTypeCombox->currentIndexChanged(sumTypeCombox->currentIndex());
     Q_EMIT spanCombox->currentIndexChanged(spanCombox->currentIndex());
+    Q_EMIT sumTypeCombox->currentIndexChanged(sumTypeCombox->currentIndex());
     checked = settings->getBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_SMOOTH);
     hisCurveBox->setChecked(checked);
     Q_EMIT hisCurveBox->clicked(checked);
@@ -1470,57 +1393,38 @@ void UkpmWidget::connectSlots()
     checked = settings->getBool(GPM_SETTINGS_INFO_STATS_GRAPH_POINTS);
     sumDataBox->setChecked(checked);
     Q_EMIT sumDataBox->clicked(checked);
-    Q_EMIT tabWidgetBTR->currentChanged(page);
-    listWidget->setCurrentRow(parseArguments());
-    timer.setInterval(15000);
-    connect(&timer,SIGNAL(timeout()),this,SLOT(handleTimeout()));
-    timer.start();
-}
 
-void UkpmWidget::handleTimeout()
-{
-    int number = tabWidgetBTR->currentIndex();
-    if(1==number)
+    for(int i = 0; i < devices.size(); i++)
     {
-        updateHisType(mHISTYPE);
+        QDBusConnection::systemBus().connect(DBUS_SERVICE,devices.at(i)->m_dev->path,DBUS_INTERFACE,
+                                             QString("PropertiesChanged"),devices.at(i),SLOT(handleChanged(QDBusMessage)));
 
+        connect(devices.at(i),SIGNAL(device_property_changed(QString)),this,SLOT(devPropertiesChanged(QString)));
     }
 }
 
-void UkpmWidget::onBtrPageChanged(int index)
+void UkpmWidget::upHistoryType(int index)
 {
-    settings->setInt(GPM_SETTINGS_INFO_PAGE_NUMBER,index);
-    qDebug()<<"btr page number is:"<< index;
-    if(0 == index)
+    Q_UNUSED(index);
+//    qDebug()<<"upHistoryType";
+    ukpm_update_info_page_history(current_device);
+}
+
+void UkpmWidget::upStatsType(int index)
+{
+    Q_UNUSED(index);
+    ukpm_update_info_page_stats(current_device);
+}
+
+void UkpmWidget::onPageChanged(int index)
+{
+    if(index != index_old)
     {
-        //jiangh
-        getBtrDetail();
-        detailBTRTable->item(1,1)->setText(btrDetailData.Type);
-        detailBTRTable->item(2,1)->setText(btrDetailData.Vendor);
-        detailBTRTable->item(3,1)->setText(btrDetailData.Model);
-        detailBTRTable->item(4,1)->setText(btrDetailData.PowerSupply);
-        detailBTRTable->item(5,1)->setText(btrDetailData.Refresh);
-        detailBTRTable->item(6,1)->setText(btrDetailData.IsPresent);
-        detailBTRTable->item(7,1)->setText(btrDetailData.IsRechargeable);
-        detailBTRTable->item(8,1)->setText(btrDetailData.State);
-        detailBTRTable->item(9,1)->setText(btrDetailData.Energy);
-        detailBTRTable->item(10,1)->setText(btrDetailData.EnergyFull);
-        detailBTRTable->item(11,1)->setText(btrDetailData.EnergyFullDesign);
-        detailBTRTable->item(12,1)->setText(btrDetailData.EnergyRate);
-        detailBTRTable->item(13,1)->setText(btrDetailData.Voltage);
-        detailBTRTable->item(14,1)->setText(btrDetailData.TimeToFull);
-        detailBTRTable->item(15,1)->setText(btrDetailData.TimeToEmpty);
-        detailBTRTable->item(16,1)->setText(btrDetailData.Percentage);
-        detailBTRTable->item(17,1)->setText(btrDetailData.Capacity);
+        settings->setInt(GPM_SETTINGS_INFO_PAGE_NUMBER,index);
+        index_old = index;
     }
-   if(1 == index)
-    {
-        Q_EMIT spanCombox->currentIndexChanged(spanCombox->currentIndex());
-    }
-   if(2 == index)
-    {
-        Q_EMIT sumTypeCombox->currentIndexChanged(sumTypeCombox->currentIndex());
-    }
+//    qDebug()<<"tab page number is:"<< index;
+//    ukpm_update_info_data_page(current_device,index);
 }
 
 void UkpmWidget::drawHisSpineline(bool flag)
@@ -1528,19 +1432,25 @@ void UkpmWidget::drawHisSpineline(bool flag)
     settings->setBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_SMOOTH,flag);
     if(flag)
     {
-        spineLineHis = true;
         hisChart->removeSeries(hisSeries);
         hisChart->addSeries(hisSpline);
         hisSpline->attachAxis(xtime);//连接数据集与
         hisSpline->attachAxis(axisY);//连接数据集与
+        if(hisDataBox->isChecked())
+            hisSpline->setPointsVisible(true);
+        else
+            hisSpline->setPointsVisible(false);
     }
     else
     {
-        spineLineHis = false;
         hisChart->removeSeries(hisSpline);
         hisChart->addSeries(hisSeries);
         hisSeries->attachAxis(xtime);//连接数据集与
         hisSeries->attachAxis(axisY);//连接数据集与
+        if(hisDataBox->isChecked())
+            hisSeries->setPointsVisible(true);
+        else
+            hisSeries->setPointsVisible(false);
     }
 }
 
@@ -1549,189 +1459,28 @@ void UkpmWidget::drawSumSpineline(bool flag)
     settings->setBool(GPM_SETTINGS_INFO_STATS_GRAPH_SMOOTH,flag);
     if(flag)
     {
-        spineLineSum = true;
         sumChart->removeSeries(sumSeries);
         sumChart->addSeries(sumSpline);
         sumSpline->attachAxis(x);
         sumSpline->attachAxis(y);
+        if(sumDataBox->isChecked())
+            sumSpline->setPointsVisible(true);
+        else
+            sumSpline->setPointsVisible(false);
     }
     else
     {
-        spineLineSum = false;
         sumChart->removeSeries(sumSpline);
         sumChart->addSeries(sumSeries);
         sumSeries->attachAxis(x);
         sumSeries->attachAxis(y);
+        if(sumDataBox->isChecked())
+            sumSeries->setPointsVisible(true);
+        else
+            sumSeries->setPointsVisible(false);
     }
 }
 
-void UkpmWidget::setupBtrDetail()
-{
-    tabWidgetBTR = new QTabWidget();
-    QWidget *detailBTR = new QWidget();
-    tabWidgetBTR->addTab(detailBTR,QString());
-    tabWidgetBTR->setTabText(0,tr("Detail"));
-    stackedWidget->addWidget(tabWidgetBTR);
-    QStringList strList;
-    strList << tr("attribute") << tr("value");
-    detailBTRTable = new QTableWidget(18,2,detailBTR);
-    detailBTRTable->setHorizontalHeaderLabels(strList);
-    detailBTRTable->verticalHeader()->setVisible(false);
-    detailBTRTable->horizontalHeader()->setStretchLastSection(true);
-
-    detailBTRTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-
-    detailBTRTable->setItem(0,0,new QTableWidgetItem(tr("Device")));
-    detailBTRTable->setItem(1,0,new QTableWidgetItem(tr("Type")));
-    detailBTRTable->setItem(2,0,new QTableWidgetItem(tr("Vendor")));
-    detailBTRTable->setItem(3,0,new QTableWidgetItem(tr("Model")));
-    detailBTRTable->setItem(4,0,new QTableWidgetItem(tr("PowerSupply")));
-    detailBTRTable->setItem(5,0,new QTableWidgetItem(tr("Refresh")));
-    detailBTRTable->setItem(6,0,new QTableWidgetItem(tr("IsPresent")));
-    detailBTRTable->setItem(7,0,new QTableWidgetItem(tr("IsRechargeable")));
-    detailBTRTable->setItem(8,0,new QTableWidgetItem(tr("State")));
-    detailBTRTable->setItem(9,0,new QTableWidgetItem(tr("Energy")));
-    detailBTRTable->setItem(10,0,new QTableWidgetItem(tr("EnergyFull")));
-    detailBTRTable->setItem(11,0,new QTableWidgetItem(tr("EnergyFullDesign")));
-    detailBTRTable->setItem(12,0,new QTableWidgetItem(tr("EnergyRate")));
-    detailBTRTable->setItem(13,0,new QTableWidgetItem(tr("Voltage")));
-    detailBTRTable->setItem(14,0,new QTableWidgetItem(tr("TimeToFull")));
-    detailBTRTable->setItem(15,0,new QTableWidgetItem(tr("TimeToEmpty")));
-    detailBTRTable->setItem(16,0,new QTableWidgetItem(tr("Percentage")));
-    detailBTRTable->setItem(17,0,new QTableWidgetItem(tr("Capacity")));
-
-    QVBoxLayout *detailBTRLayout = new QVBoxLayout;
-    detailBTRLayout->addWidget(detailBTRTable);
-    detailBTR->setLayout(detailBTRLayout);
-}
-
-void UkpmWidget::getDcDetail()
-{
-    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",acSvr,
-            "org.freedesktop.DBus.Properties","GetAll");
-    msg << "org.freedesktop.UPower.Device";
-    QDBusMessage res = QDBusConnection::systemBus().call(msg);
-
-    if(res.type() == QDBusMessage::ReplyMessage)
-    {
-        const QDBusArgument &dbusArg = res.arguments().at(0).value<QDBusArgument>();
-        QMap<QString,QVariant> map;
-        dbusArg >> map;
-
-        dcDetailData.Type = (map.value(QString("Type")).toInt()==2) ? tr("Notebook battery") : tr("ac-adapter");
-        dcDetailData.Online = boolToString(map.value(QString("Online")).toBool());
-        dcDetailData.PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
-        dcDetailData.Device = acSvr.section('/',-1);
-    }
-    else {
-        qDebug()<<"No response!";
-    }
-
-}
-
-void UkpmWidget::getBtrDetail()
-{
-    QDBusMessage msg = QDBusMessage::createMethodCall(DBUS_SERVICE,batterySvr,
-            DBUS_INTERFACE,"GetAll");
-    msg << DBUS_INTERFACE_PARAM;
-    QDBusMessage res = QDBusConnection::systemBus().call(msg);
-
-    if(res.type() == QDBusMessage::ReplyMessage)
-    {
-        const QDBusArgument &dbusArg = res.arguments().at(0).value<QDBusArgument>();
-        QMap<QString,QVariant> map;
-        dbusArg >> map;
-
-        btrDetailData.Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
-        btrDetailData.Model = map.value(QString("Model")).toString();
-        btrDetailData.Device = map.value(QString("NativePath")).toString();
-        btrDetailData.Vendor = map.value(QString("Vendor")).toString();
-        btrDetailData.Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
-        btrDetailData.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
-        btrDetailData.EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
-        btrDetailData.EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
-        btrDetailData.EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
-        btrDetailData.EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-        btrDetailData.IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
-        btrDetailData.IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
-        btrDetailData.PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
-        btrDetailData.Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
-        btrDetailData.Online = boolToString(map.value(QString("Online")).toBool());
-        struct timeval tv;
-        uint tim;
-        gettimeofday(&tv,NULL);
-        tim = tv.tv_sec - map.value(QString("UpdateTime")).toLongLong();
-        btrDetailData.Refresh = getSufix(tim,'s');
-
-        flag = map.value(QString("State")).toLongLong();
-        switch (flag) {
-        case 1:
-            dcDetailData.Online = tr("Yes");
-            btrDetailData.State = tr("Charging");
-
-            break;
-        case 2:
-            dcDetailData.Online = tr("No");
-            btrDetailData.State = tr("Discharging");
-
-            break;
-        case 3:
-            btrDetailData.State = tr("Empty");
-            break;
-        case 4:
-            btrDetailData.State = tr("Charged");
-            break;
-        default:
-            break;
-        }
-
-        calcTime(btrDetailData.TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
-        calcTime(btrDetailData.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
-        btrDetailData.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
-    }
-    else {
-        qDebug()<<"No response!";
-    }
-}
-
-void UkpmWidget::getAll(DEV *dc)
-{
-    QDBusMessage msg = QDBusMessage::createMethodCall("org.freedesktop.UPower",batterySvr,
-            "org.freedesktop.DBus.Properties","GetAll");
-    msg << "org.freedesktop.UPower.Device";
-    QDBusMessage res = QDBusConnection::systemBus().call(msg);
-
-    if(res.type() == QDBusMessage::ReplyMessage)
-    {
-        const QDBusArgument &dbusArg = res.arguments().at(0).value<QDBusArgument>();
-        QMap<QString,QVariant> map;
-        dbusArg >> map;
-
-        dc->Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
-        dc->Model = map.value(QString("Model")).toString();
-        dc->Device = map.value(QString("NativePath")).toString();
-        dc->Vendor = map.value(QString("Vendor")).toString();
-        dc->Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
-        dc->Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
-        dc->EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
-        dc->EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
-        dc->EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
-        dc->EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-        dc->IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
-        dc->IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
-        dc->PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
-        dc->Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
-        dc->Online = boolToString(map.value(QString("Online")).toBool());
-        calcTime(dc->TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
-        calcTime(dc->TimeToFull, map.value(QString("TimeToFull")).toLongLong());
-        dc->Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
-
-    }
-    else {
-        qDebug()<<"No response!";
-    }
-
-}
 QList<QPointF> UkpmWidget::setdata() //设置图表数据的函数接口
 {
     QList<QPointF> datalist;
@@ -1752,24 +1501,15 @@ void UkpmWidget::helpFormat()
     cmd->start("yelp");
 }
 
-void UkpmWidget::btrPropertiesChanged(QDBusMessage  msg)
+void UkpmWidget::devPropertiesChanged(QString object_path)
 {
-    const QDBusArgument &arg = msg.arguments().at(1).value<QDBusArgument>();
-    QMap<QString,QVariant> map;
-    arg >> map;
-    putAttributes(map);
-}
-
-void UkpmWidget::acPropertiesChanged(QDBusMessage  msg)
-{
-    const QDBusArgument &arg = msg.arguments().at(1).value<QDBusArgument>();
-    QMap<QString,QVariant> map;
-    arg >> map;
-    if(map.contains("Online"))
+    if(current_device == NULL || object_path == NULL)
+        return;
+    if(object_path == current_device->path)
     {
-        iconflag=map.value(QString("Online")).toBool();
-        dcDetailData.Online = boolToString(iconflag);
-        detailDcTable->item(3,1)->setText(dcDetailData.Online);
+        int page = tab_widget->currentIndex();
+//        qDebug()<<"devproperty changed and page="<<page;
+        ukpm_update_info_data_page (current_device, page);
     }
 }
 
@@ -1808,52 +1548,59 @@ void UkpmWidget::deviceAdded(QDBusMessage  msg)
         else
             label =device_kind_to_localised_text((UpDeviceKind)kindEnum,1);
 
-        if(kindEnum == UP_DEVICE_KIND_LINE_POWER || kindEnum == UP_DEVICE_KIND_BATTERY || kindEnum == UP_DEVICE_KIND_COMPUTER)
-        {
-            item = new QListWidgetItem(QIcon(":/"+icon),label);
-            listWidget->addItem(item);
-            listItem.insert(objectPath,item);
-        }
+        item = new QListWidgetItem(QIcon(":/"+icon),label);
+        listWidget->addItem(item);
+        listItem.insert(objectPath,item);
 
-        DEV dev;
-        dev.Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
-        dev.Model = map.value(QString("Model")).toString();
-        dev.Device = map.value(QString("NativePath")).toString();
-        dev.Vendor = map.value(QString("Vendor")).toString();
-        dev.Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
-        dev.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
-        dev.EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
-        dev.EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
-        dev.EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
-        dev.EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
-        dev.Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
-        dev.Online = boolToString(map.value(QString("Online")).toBool());
-        dev.IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
-        dev.IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
-        dev.PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
+        DEVICE *dev = new DEVICE(this);
+        dev->m_dev->Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
+        dev->m_dev->Model = map.value(QString("Model")).toString();
+        dev->m_dev->Device = map.value(QString("NativePath")).toString();
+        dev->m_dev->Vendor = map.value(QString("Vendor")).toString();
+        dev->m_dev->Capacity = QString::number(map.value(QString("Capacity")).toDouble(), 'f', 1) + "%";
+        dev->m_dev->Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
+        dev->m_dev->EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
+        dev->m_dev->EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
+        dev->m_dev->EnergyFullDesign = QString::number(map.value(QString("EnergyFullDesign")).toDouble(), 'f', 1) + " Wh";
+        dev->m_dev->EnergyRate = QString::number(map.value(QString("EnergyRate")).toDouble(), 'f', 1) + " W";
+        dev->m_dev->Percentage = QString::number(map.value(QString("Percentage")).toDouble(), 'f', 1)+"%";
+        dev->m_dev->Online = boolToString(map.value(QString("Online")).toBool());
+        dev->m_dev->IsPresent = boolToString(map.value(QString("IsPresent")).toBool());
+        dev->m_dev->IsRechargeable = boolToString(map.value(QString("IsRechargeable")).toBool());
+        dev->m_dev->PowerSupply = boolToString(map.value(QString("PowerSupply")).toBool());
 
-        flag = map.value(QString("State")).toLongLong();
+        int flag = map.value(QString("State")).toLongLong();
         switch (flag) {
         case 1:
-            dev.State = tr("Charging");
+            dev->m_dev->State = tr("Charging");
             break;
         case 2:
-            dev.State = tr("Discharging");
+            dev->m_dev->State = tr("Discharging");
             break;
         case 3:
-            dev.State = tr("Empty");
+            dev->m_dev->State = tr("Empty");
             break;
         case 4:
-            dev.State = tr("Charged");
+            dev->m_dev->State = tr("Charged");
+            break;
+        case 5:
+            dev->m_dev->State = tr("PendingCharge");
+            break;
+        case 6:
+            dev->m_dev->State = tr("PendingDischarge");
             break;
         default:
             break;
         }
-        calcTime(dev.TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
-        calcTime(dev.TimeToFull, map.value(QString("TimeToFull")).toLongLong());
-        dev.Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
+        calcTime(dev->m_dev->TimeToEmpty, map.value(QString("TimeToEmpty")).toLongLong());
+        calcTime(dev->m_dev->TimeToFull, map.value(QString("TimeToFull")).toLongLong());
+        dev->m_dev->Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
         devices.push_back(dev);
-//        addNewUI(objectPath,newKind);
+
+        QDBusConnection::systemBus().connect(DBUS_SERVICE,dev->m_dev->path,DBUS_INTERFACE,
+                                             QString("PropertiesChanged"),dev,SLOT(handleChanged(QDBusMessage)));
+
+        connect(dev,SIGNAL(device_property_changed(QString)),this,SLOT(devPropertiesChanged(QString)));
     }
 }
 
@@ -1869,6 +1616,14 @@ void UkpmWidget::deviceRemoved(QDBusMessage  msg)
         listItem.erase(iter);
         delete iter.value();
     }
+    foreach (auto item, devices) {
+        if(item->m_dev->path == objectPath.path())
+        {
+            devices.removeOne(item);
+            delete item;
+            break;
+        }
+    }
 //    QMap<QDBusObjectPath,QTabWidget*>::iterator iterWidget = widgetItem.find(objectPath);
 //    if(iterWidget!= widgetItem.end())
 //    {
@@ -1878,4 +1633,48 @@ void UkpmWidget::deviceRemoved(QDBusMessage  msg)
 //    }
 }
 
+
+void UkpmWidget::setupUI()
+{
+    QDesktopWidget *deskdop = QApplication::desktop();
+    resize(deskdop->width()/2,deskdop->height()/2);
+//    resize(900,580);
+    move((deskdop->width() - this->width())/2, (deskdop->height() - this->height())/2);
+//    setWindowFlags(windowFlags()&~Qt::WindowMaximizeButtonHint);
+//    setWindowTitle(tr("Power Statistics"));
+    setWindowFlags(Qt::FramelessWindowHint);
+//    setWindowFlags(Qt::FramelessWindowHint|Qt::WindowMinimizeButtonHint);
+    QSplitter *mainsplitter = new QSplitter(Qt::Horizontal,this);//splittering into two parts
+    listWidget = new QListWidget(mainsplitter);
+    listWidget->setObjectName("m_listWidget");
+    listWidget->setSpacing(10);
+    tab_widget =  new QTabWidget(mainsplitter);
+
+    mainsplitter->setStretchFactor(1,4);
+//    mainsplitter->setFrameStyle();
+    QVBoxLayout *vlayout = new QVBoxLayout;
+    vlayout->setContentsMargins(5,0,40,0);
+    QFrame *header = new QFrame(this);
+    header->setFixedHeight(TITLE_HEIGHT);
+    header->setWindowFlags(Qt::FramelessWindowHint);
+    vlayout->addWidget(header);
+    vlayout->addWidget(mainsplitter);
+
+    setLayout(vlayout);//main layout of the UI
+    title = new TitleWidget(this);
+    title->move(0,0);
+
+    setDetailTab();
+    setHistoryTab();
+    setSumTab();
+    getDevices();
+
+    if(devices.size()>0)
+    {
+        current_device = devices.at(0)->m_dev;
+
+        listWidget->setItemSelected(listWidget->item(0),true);
+        ukpm_update_info_data (current_device);
+    }
+}
 

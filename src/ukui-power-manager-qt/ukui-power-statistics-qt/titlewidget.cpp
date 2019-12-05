@@ -3,6 +3,8 @@
 #include <QPainter>
 #include <QFile>
 #include <QMouseEvent>
+#include <QX11Info>
+#include <X11/Xlib.h>
 
 TitleWidget::TitleWidget(QWidget *parent)
     : QWidget(parent)
@@ -25,27 +27,28 @@ void TitleWidget::initControl()
 {
 //    m_pIcon = new QLabel;
     m_pTitleContent = new QLabel;
+    m_pTitleContent->setObjectName("TitleContent");
 
-    m_pButtonMax = new QPushButton;
-    m_pButtonClose = new QPushButton;
+    m_pButtonHelp = new QToolButton;
+    m_pButtonClose = new QToolButton;
 
-
-    m_pButtonMax->setFixedSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT));
+    m_pButtonHelp->setFixedSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT));
     m_pButtonClose->setFixedSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT));
 
-    m_pTitleContent->setObjectName("TitleContent");
-    m_pButtonMax->setObjectName("ButtonHelp");
-    m_pButtonClose->setObjectName("ButtonClose");
+    m_help = new QLabel(m_pButtonHelp);
+    m_close = new QLabel(m_pButtonClose);
+    m_help->setObjectName("labelhelp");
+    m_close->setObjectName("labelclose");
+    m_help->setFixedSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT));
+    m_close->setFixedSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT));
+//    m_help->setPixmap(QPixmap(":/resource/icon/__con.png"));
+//    m_close->setPixmap(QPixmap(":/resource/icon/1px_delete_con.png"));
 
-    m_pButtonMax->setToolTip(tr("help"));
-    m_pButtonMax->setIcon(QIcon(":/resource/icon/__con.png"));
-    m_pButtonClose->setToolTip(tr("close"));
-    m_pButtonClose->setIcon(QIcon(":/resource/icon/1px_delete_con.png"));
     QHBoxLayout* mylayout = new QHBoxLayout(this);
 //    mylayout->addWidget(m_pIcon);
     mylayout->addWidget(m_pTitleContent);
 
-    mylayout->addWidget(m_pButtonMax);
+    mylayout->addWidget(m_pButtonHelp);
     mylayout->addWidget(m_pButtonClose);
 
     mylayout->setContentsMargins(10, 0, 16, 0);
@@ -60,7 +63,7 @@ void TitleWidget::initControl()
 // 信号槽的绑定;
 void TitleWidget::connectSlots()
 {
-    connect(m_pButtonMax, SIGNAL(clicked()), this, SLOT(onButtonHelpClicked()));
+    connect(m_pButtonHelp, SIGNAL(clicked()), this, SLOT(onButtonHelpClicked()));
     connect(m_pButtonClose, SIGNAL(clicked()), this, SLOT(onButtonCloseClicked()));
 }
 
@@ -129,8 +132,8 @@ void TitleWidget::paintEvent(QPaintEvent *event)
 
 void TitleWidget::mousePressEvent(QMouseEvent *event)
 {
-
-    m_isPressed = true;
+    if (event->button() == Qt::LeftButton)
+        m_isPressed = true;
     m_startMovePos = event->globalPos();
 
     return QWidget::mousePressEvent(event);
@@ -140,17 +143,45 @@ void TitleWidget::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_isPressed)
     {
-        QPoint movePoint = event->globalPos() - m_startMovePos;
-        QPoint widgetPos = this->parentWidget()->pos();
-        m_startMovePos = event->globalPos();
-        this->parentWidget()->move(widgetPos.x() + movePoint.x(), widgetPos.y() + movePoint.y());
+//        QPoint movePoint = event->globalPos() - m_startMovePos;
+//        QPoint widgetPos = this->parentWidget()->pos();
+//        m_startMovePos = event->globalPos();
+//        this->parentWidget()->move(widgetPos.x() + movePoint.x(), widgetPos.y() + movePoint.y());
+        moveWindow();
     }
     return QWidget::mouseMoveEvent(event);
 }
 
+void TitleWidget::moveWindow(void)
+{
+    Display *display = QX11Info::display();
+    Atom netMoveResize = XInternAtom(display, "_NET_WM_MOVERESIZE", False);
+    XEvent xEvent;
+    const auto pos = QCursor::pos();
+
+    memset(&xEvent, 0, sizeof(XEvent));
+    xEvent.xclient.type = ClientMessage;
+    xEvent.xclient.message_type = netMoveResize;
+    xEvent.xclient.display = display;
+    xEvent.xclient.window = this->winId();
+    xEvent.xclient.format = 32;
+    xEvent.xclient.data.l[0] = pos.x();
+    xEvent.xclient.data.l[1] = pos.y();
+    xEvent.xclient.data.l[2] = 8;
+    xEvent.xclient.data.l[3] = Button1;
+    xEvent.xclient.data.l[4] = 0;
+
+    XUngrabPointer(display, CurrentTime);
+    XSendEvent(display, QX11Info::appRootWindow(QX11Info::appScreen()),
+               False, SubstructureNotifyMask | SubstructureRedirectMask,
+               &xEvent);
+    XFlush(display);
+}
+
 void TitleWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-    m_isPressed = false;
+    if (event->button() == Qt::LeftButton)
+        m_isPressed = false;
     return QWidget::mouseReleaseEvent(event);
 }
 

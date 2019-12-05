@@ -14,8 +14,6 @@
         <file>icon/__click.png</file>
         <file>icon/__con.png</file>
         <file>icon/__hover.png</file>
-        <file>icon/1px_delete _click.png</file>
-        <file>icon/1px_delete _hover.png</file>
         <file>icon/1px_delete_con.png</file>
         <file>icon/acb.png</file>
         <file>icon/acw.png</file>
@@ -25,5 +23,7 @@
         <file>icon/down.png</file>
         <file>icon/unchecked.png</file>
         <file>icon/undetermine.png</file>
+        <file>icon/1px_delete_click.png</file>
+        <file>icon/1px_delete_hover.png</file>
     </qresource>
 </RCC>

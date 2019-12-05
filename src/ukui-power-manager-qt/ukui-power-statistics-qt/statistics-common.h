@@ -1,6 +1,8 @@
 #ifndef STATISTICSCOMMON_H
 #define STATISTICSCOMMON_H
 
+#include <QString>
+#include "customtype.h"
 #define LOGIND_RUNNING() (access("/run/systemd/seats/", F_OK) >= 0)
 
 #define	GPM_DBUS_SERVICE		"org.ukui.PowerManager"
@@ -127,8 +129,19 @@ typedef enum {
     GPM_ACTION_POLICY_NOTHING
 } GpmActionPolicy;
 
+typedef enum {
+    GPM_GRAPH_WIDGET_TYPE_INVALID,
+    GPM_GRAPH_WIDGET_TYPE_PERCENTAGE,
+    GPM_GRAPH_WIDGET_TYPE_FACTOR,
+    GPM_GRAPH_WIDGET_TYPE_TIME,
+    GPM_GRAPH_WIDGET_TYPE_POWER,
+    GPM_GRAPH_WIDGET_TYPE_VOLTAGE,
+    GPM_GRAPH_WIDGET_TYPE_UNKNOWN
+} GpmGraphWidgetType;
+
 struct DEV
 {
+    UpDeviceKind kind;
     QString Device;
     QString Type;
     QString PowerSupply;
@@ -149,6 +162,21 @@ struct DEV
     QString TimeToFull;
     QString Voltage;
     QString Capacity;
+    QString update_time;
+    QString serial;
+    QString Technology;
+    bool hasHistory;
+    bool hasStat;
+    QString path;
+
+    GpmGraphWidgetType type_x;
+    GpmGraphWidgetType type_y;
+    bool autorange_x;
+    int start_x;
+    int stop_x;
+    bool autorange_y;
+    int start_y;
+    int stop_y;
 };
 
 #endif // STATISTICSCOMMON_H

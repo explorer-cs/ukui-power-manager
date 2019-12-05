@@ -9,8 +9,8 @@ then
 	exit
 fi
 
-echo ${power_status}
-echo ${power_mode}
+#echo ${power_status}
+#echo ${power_mode}
 
 hosts=`ls /sys/class/scsi_host/`
 policys=`ls /sys/devices/system/cpu/cpufreq/`
@@ -19,7 +19,6 @@ cards=`ls /sys/class/drm/`
 function cpu_scaling_gover_speed()
 {
 	scaling_governor="performance"
-	scaling_setspeed=1000000
 
 	if [ ${power_status} == "AC" ];
 	then
@@ -28,8 +27,8 @@ function cpu_scaling_gover_speed()
 
 	if [ ${power_status} == "BAT" -a ${power_mode} == "POWERSAVE" ];
 	then
-		scaling_governor="userspace"
-		scaling_setspeed=1000000
+		scaling_governor="ondemand"
+
 	fi
 
 	for policy in ${policys};
@@ -38,11 +37,6 @@ function cpu_scaling_gover_speed()
 		then
 			echo ${scaling_governor} > /sys/devices/system/cpu/cpufreq/${policy}/scaling_governor
 		fi
-	
-	        if [ ${power_status} == "BAT" -a -f "/sys/devices/system/cpu/cpufreq/${policy}/scaling_setspeed" ];
-       		then
-                	echo ${scaling_setspeed} > /sys/devices/system/cpu/cpufreq/${policy}/scaling_setspeed
-        	fi
 	done
 }
 
@@ -61,19 +55,15 @@ function drm_set_mode()
 		level="low"
 	fi
 	
+	if [ -f "/sys/class/drm/card0/device/power_dpm_state" ];
+	then
+		echo ${state} > /sys/class/drm/card0/device/power_dpm_state
+	fi
 
-	for card in ${cards};
-	do
-		if [ -f "/sys/class/drm/${card}/device/power_dpm_state" ];
-		then
-			echo ${state} > /sys/class/drm/${card}/device/power_dpm_state
-		fi
-	
-		if [ -f "/sys/class/drm/${card}/device/power_dpm_force_performance_level" ];
-		then
-			echo ${level} > /sys/class/drm/${card}/device/power_dpm_force_performance_level
-		fi
-	done	
+	if [ -f "/sys/class/drm/card0/device/power_dpm_force_performance_level" ];
+	then
+		echo ${level} > /sys/class/drm/card0/device/power_dpm_force_performance_level
+	fi
 }
 
 function pcie_aspm_set_mode()
@@ -86,7 +76,7 @@ function pcie_aspm_set_mode()
 	
 	if [ ${power_status} == "BAT" -a ${power_mode} == "POWERSAVE" ];
 	then
-		pcie_policy="powersupersave"
+		pcie_policy="powersave"
 	fi
 	if [ -f "/sys/module/pcie_aspm/parameters/policy" ];
 	then
@@ -111,14 +101,33 @@ function sata_alsm_set()
         do
                 if [ -f "/sys/class/scsi_host/${host}/link_power_management_policy" ];
                 then
-			echo /sys/class/scsi_host/${host}/link_power_management_policy
                         echo ${alsm_policy} > /sys/class/scsi_host/${host}/link_power_management_policy
                 fi
         done
+}
+
+function audio_set_mode()
+{
+	audio_policy="on"
+	if [ ${power_status} == "AC" ];
+        then
+                audio_policy="on"
+        fi
+
+        if [ ${power_status} == "BAT" -a ${power_mode} == "POWERSAVE" ];
+        then
+                audio_policy="auto"
+        fi
+
+	if [ -f "/sys/devices/platform/FTHD0001:00/hdaudioC1D0/power/control" ];
+	then
+		echo ${audio_policy} > /sys/devices/platform/FTHD0001:00/hdaudioC1D0/power/control
+#		cat /sys/devices/platform/FTHD0001:00/hdaudioC1D0/power/control
+	fi
 }
 
 cpu_scaling_gover_speed
 drm_set_mode
 pcie_aspm_set_mode
 sata_alsm_set
-
+audio_set_mode

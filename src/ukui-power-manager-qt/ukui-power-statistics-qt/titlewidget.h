@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 
 #define BUTTON_HEIGHT 22        // 按钮高度;
 #define BUTTON_WIDTH 30         // 按钮宽度;
@@ -34,6 +35,7 @@ public:
     // 加载样式文件;
     void loadStyleSheet(const QString &sheetName);
 
+    void moveWindow();
 Q_SIGNALS:
     // 按钮触发的信号;
 
@@ -46,9 +48,10 @@ private Q_SLOTS:
 private:
     QLabel* m_pIcon;                    // 标题栏图标;
     QLabel* m_pTitleContent;            // 标题栏内容;
-    QPushButton* m_pButtonMax;          // 最大化按钮;
-    QPushButton* m_pButtonClose;        // 关闭按钮;
-
+    QToolButton* m_pButtonHelp;          // 最大化按钮;
+    QToolButton* m_pButtonClose;        // 关闭按钮;
+    QLabel* m_help;                    // 标题栏图标;
+    QLabel* m_close;            // 标题栏内容;
     // 标题栏背景色;
     int m_colorR;
     int m_colorG;

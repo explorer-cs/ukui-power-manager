@@ -49,12 +49,17 @@
 #include <QCategoryAxis>
 #include "customtype.h"
 #include "statistics-common.h"
+#include "device.h"
+
 
 #define WORKING_DIRECTORY "."
 #define DBUS_SERVICE "org.freedesktop.UPower"
 #define DBUS_OBJECT "/org/freedesktop/UPower"
 #define DBUS_INTERFACE "org.freedesktop.DBus.Properties"
 #define DBUS_INTERFACE_PARAM "org.freedesktop.UPower.Device"
+
+#include <QStandardItemModel>
+#include <QTableView>
 
 enum SUMTYPE
 {
@@ -70,39 +75,6 @@ enum TIMESPAN
 {
     TENM,TWOH,SIXH,ONED,ONEW
 };
-
-struct DCDetail
-{
-    QString Device;
-    QString Type;
-    QString PowerSupply;
-    QString Online;
-};
-
-
-struct BTRDetail
-{
-    QString Device;
-    QString Type;
-    QString Vendor;
-    QString Model;
-    QString PowerSupply;
-    QString Refresh;
-    QString Energy;
-    QString EnergyEmpty;
-    QString EnergyFull;
-    QString EnergyFullDesign;
-    QString EnergyRate;
-    QString IsPresent;
-    QString IsRechargeable;
-    QString Percentage;
-    QString State;
-    QString TimeToEmpty;
-    QString TimeToFull;
-    QString Voltage;
-    QString Capacity;
-};
-
 
 QT_CHARTS_USE_NAMESPACE
 class UkpmWidget : public QWidget
@@ -120,7 +92,6 @@ public:
     void getDcDetail();
     void getBtrDetail();
     void getAll(DEV *dc);
-    void putAttributes(QMap<QString, QVariant> &map);
     void calcTime(QString &attr, uint time);
     void getDevices();
     void setupDcUI();
@@ -147,8 +118,7 @@ public:
     {
         return ret ? tr("yes") : tr("no");
     }
-    QString
-    up_device_kind_to_string (UpDeviceKind type_enum)
+    QString up_device_kind_to_string (UpDeviceKind type_enum)
     {
         switch (type_enum) {
         case UP_DEVICE_KIND_LINE_POWER:
@@ -178,9 +148,24 @@ public:
         }
     }
 
+    void ukpm_update_info_data_page(DEV *device, gint page);
+    void ukpm_update_info_page_stats(DEV *device);
+    void ukpm_update_info_page_details(DEV *device);
+    void ukpm_update_info_data(DEV *device);
+    void ukpm_update_info_page_history(DEV *device);
+    void getSlots();
+    void draw_history_graph(QList<QPointF> list);
+    void draw_stats_graph(QList<QPointF> list);
+    void addListRow(QString attr, QString value);
+    void setInfoUI();
+    QList<QPointF> getHistory(QString type, uint timeSpan);
+    void ukpm_set_graph_data(QList<QPointF> list, gboolean use_smoothed, gboolean use_points);
+    QList<QPointF> getStatics(QString stat_type);
+    void getProperty(QString path, DEV &dev);
+    void setupUI();
+    void setDetailTab();
+
 public Q_SLOTS:
-    void updateHisChart(int);
-    void updateSumChart(int);
     void sortDcTable(int id);
     void sortBtrTable(int id);
     void onActivatedIcon(QSystemTrayIcon::ActivationReason reason);
@@ -189,30 +174,21 @@ public Q_SLOTS:
     void showSumDataPoint(bool flag);
     void onHelpButtonClicked();
     void onExitButtonClicked();
-    void updateHisType(int index);
     void drawSumSpineline(bool flag);
     void drawHisSpineline(bool flag);
     void helpFormat();
-
-    void onUSBDeviceHotPlug(int drvid, int action, int devNumNow);
-
-    void btrPropertiesChanged(QDBusMessage msg);
-    void callFinishedSlot(QDBusPendingCallWatcher *call);
     void control_center_power();
     void deviceAdded(QDBusMessage msg);
     void deviceRemoved(QDBusMessage msg);
-    void acPropertiesChanged(QDBusMessage msg);
-    void onListChanged(int row);
-    void onBtrPageChanged(int index);
-    void handleTimeout();
-protected:
-    void minimumSize();
+    void onItemChanged(QListWidgetItem *, QListWidgetItem *);
+    void onPageChanged(int index);
+    void upHistoryType(int index);
+    void upStatsType(int index);
+    void devPropertiesChanged(QString object_path);
+
 public:
     uint timeSpan, resolution;
-    DEV dcDetailData;
-    DEV btrDetailData;
     QListWidget *listWidget;
-    QTabWidget *tabWidgetDC, *tabWidgetBTR;
     QStackedWidget *stackedWidget, *hisStack, *sumStack;
 
     HISTYPE mHISTYPE;
@@ -233,23 +209,14 @@ public:
     QComboBox *spanCombox ;
     QComboBox *typeCombox;
 
-    bool spineLineSum, spineLineHis;
-
-    QTableWidget *detailDcTable;
-    QTableWidget *detailBTRTable;
-    QHeaderView *headView;
-    QSystemTrayIcon *systemTrayIcon;
     QMenu *menu;
     QCheckBox *hisDataBox, *sumDataBox;
     QCheckBox *hisCurveBox, *sumCurveBox;
-    QToolButton *exitButton, *helpButton;
 
-    QDBusInterface *dbusService,*serviceInterface;
-    QString addString,toolTip;
-    uint flag;
     QList<QDBusObjectPath> deviceNames;
-    QList<DEV> devices;
+    QList<DEVICE*> devices;
     QMap<QDBusObjectPath,QListWidgetItem*> listItem;
+    QMap<DEVICE*,QListWidgetItem*> dev_item;
     QMap<QDBusObjectPath,QTabWidget*> widgetItem;
     QString batterySvr,acSvr;
     bool iconflag;
@@ -257,7 +224,17 @@ public:
     QTimer timer;
     TitleWidget *title;
     QColor plotcolor;
-
+    QComboBox *histype;
+    QWidget *detail_widget;
+    QWidget *his_widget;
+    QWidget *stat_widget;
+    QTabWidget *tab_widget;
+    bool checked,points;
+    QComboBox *stat_type;
+    DEV *current_device;
+    QStandardItemModel* model;
+    QTableView *tableView;
+    int index_old;
 };
 
 #endif // UKPM_WIDGET_H

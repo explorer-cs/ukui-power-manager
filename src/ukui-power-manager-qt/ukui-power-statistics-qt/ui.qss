@@ -66,6 +66,24 @@ QLabel {
     background: none;
 }
 
+QLabel#labelhelp {
+    border-image:url(:/resource/icon/__con.png);
+}
+QLabel#labelhelp:hover {
+    border-image:url(:/resource/icon/__hover.png);
+}
+QLabel#labelhelp:pressed {
+    border-image:url(:/resource/icon/__click.png);
+}
+QLabel#labelclose {
+    border-image:url(:/resource/icon/1px_delete_con.png);
+}
+QLabel#labelclose:hover {
+    border-image:url(:/resource/icon/1px_delete_hover.png);
+}
+QLabel#labelclose:pressed {
+    border-image:url(:/resource/icon/1px_delete_click.png);
+}
 QFrame {
     border: 0px;
 
@@ -104,15 +122,15 @@ border-radius: 3px;
 }
 
 
-
+/***
 QCheckBox:checked{
     color:white;
     background-color:#2669B5;
 }
-
 QCheckBox:unchecked {
     color:black;
-}
+}***/
+
 QCheckBox::indicator:unchecked {
     border-image:url(:/resource/icon/unchecked.png);
 }
