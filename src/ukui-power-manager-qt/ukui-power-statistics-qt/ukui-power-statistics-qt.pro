@@ -4,7 +4,8 @@
 #
 #-------------------------------------------------
 
-QT       += core gui dbus charts x11extras
+QT       += core gui dbus charts
+#QT       += x11extras
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -26,7 +27,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 TRANSLATIONS += zh_CN.ts en.ts
 
-LIBS += -lX11
+#LIBS += -lX11
 PKGCONFIG += gio-2.0
 CONFIG += link_pkgconfig
 

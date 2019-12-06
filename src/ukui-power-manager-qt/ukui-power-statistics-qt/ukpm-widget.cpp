@@ -246,7 +246,7 @@ void UkpmWidget::getDevices()
             else
                 return;
 
-            DEVICE *dev = new DEVICE;
+            DEVICE *dev = new DEVICE(this);
             dev->m_dev->kind = (UpDeviceKind)kindEnum;
             dev->m_dev->path = deviceNames.at(i).path();
             qDebug()<<dev->m_dev->path;
@@ -381,6 +381,8 @@ void UkpmWidget::addListRow(QString attr,QString value)
 void UkpmWidget::
 ukpm_update_info_page_details (DEV* device)
 {
+    if(current_device == NULL)
+        return;
     DEV dev;
     getProperty(device->path,dev);
     /* get a human readable time */
@@ -487,9 +489,10 @@ ukpm_update_info_page_details (DEV* device)
     }
 }
 
-void UkpmWidget::
-ukpm_update_info_data (DEV* device)
+void UkpmWidget::ukpm_update_info_data (DEV* device)
 {
+    if(current_device == NULL)
+        return;
     int page;
     bool has_history;
     bool has_statistics;
@@ -522,6 +525,8 @@ ukpm_update_info_data (DEV* device)
 void UkpmWidget::ukpm_update_info_page_history (DEV* device)
 {
     Q_UNUSED(device);
+    if(current_device == NULL || !current_device->hasHistory)
+        return;
     int index = spanCombox->currentIndex();
     if(index == TENM)
     {
@@ -543,7 +548,6 @@ void UkpmWidget::ukpm_update_info_page_history (DEV* device)
     {
         timeSpan = 7*24*60*60;
     }
-    settings->setInt(GPM_SETTINGS_INFO_HISTORY_TIME,timeSpan);
 
     QString type;
     index = typeCombox->currentIndex();
@@ -557,7 +561,6 @@ void UkpmWidget::ukpm_update_info_page_history (DEV* device)
         current_device->start_y = 0;
         current_device->stop_y = 100;
         type = "rate";
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_RATE_VALUE);
 
     } else if (index==VOLUME) {
 
@@ -568,7 +571,6 @@ void UkpmWidget::ukpm_update_info_page_history (DEV* device)
         current_device->stop_x = 0;
         current_device->autorange_y = true;
         type = "charge";
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_CHARGE_VALUE);
 
     } else if (index==CHARGE_DURATION) {
 
@@ -579,7 +581,6 @@ void UkpmWidget::ukpm_update_info_page_history (DEV* device)
         current_device->stop_x = 0;
         current_device->autorange_y = true;
         type = "time-full";
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_TIME_FULL_VALUE);
 
     }else if (index==DISCHARGING_DURATION) {
 
@@ -590,12 +591,12 @@ void UkpmWidget::ukpm_update_info_page_history (DEV* device)
         current_device->stop_x = 0;
         current_device->autorange_y = true;
         type = "time-empty";
-        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_TIME_EMPTY_VALUE);
     }
     QList<QPointF> list = getHistory(type,timeSpan);
     if (list.size() == 0) {
         return;
     }
+//    ukpm_set_choice_history();
     draw_history_graph(list);
 }
 
@@ -686,6 +687,32 @@ void UkpmWidget::draw_stats_graph(QList<QPointF> list)
         y->setTickCount(10);
     }
 
+    sumStack->setCurrentIndex(1);
+}
+
+void UkpmWidget::ukpm_set_choice_sum()
+{
+    bool checked;
+
+    QString stats_type = settings->getString(GPM_SETTINGS_INFO_STATS_TYPE);
+    if(stats_type == NULL)
+        stats_type = GPM_STATS_CHARGE_DATA_VALUE;
+    if (QString::compare( stats_type, GPM_STATS_CHARGE_DATA_VALUE) == 0)
+        sumTypeCombox->setCurrentIndex(0);
+    else if (QString::compare(stats_type, GPM_STATS_CHARGE_ACCURACY_VALUE) == 0)
+        sumTypeCombox->setCurrentIndex(1);
+    else if (QString::compare (stats_type, GPM_STATS_DISCHARGE_DATA_VALUE) == 0)
+        sumTypeCombox->setCurrentIndex(2);
+    else
+        sumTypeCombox->setCurrentIndex(3);
+
+//    Q_EMIT hisDataBox->clicked(checked);
+    checked = settings->getBool(GPM_SETTINGS_INFO_STATS_GRAPH_SMOOTH);
+    sumCurveBox->setChecked(checked);
+//    Q_EMIT sumCurveBox->clicked(checked);
+    checked = settings->getBool(GPM_SETTINGS_INFO_STATS_GRAPH_POINTS);
+    sumDataBox->setChecked(checked);
+//    Q_EMIT sumDataBox->clicked(checked);
     if(sumDataBox->isChecked())
     {
         if(sumCurveBox->isChecked())
@@ -724,7 +751,6 @@ void UkpmWidget::draw_stats_graph(QList<QPointF> list)
             sumSeries->attachAxis(y);//连接数据集与
         }
     }
-    sumStack->setCurrentIndex(1);
 }
 
 void UkpmWidget::draw_history_graph(QList<QPointF> list)
@@ -857,6 +883,40 @@ void UkpmWidget::draw_history_graph(QList<QPointF> list)
 //    settings->setInt(GPM_SETTINGS_INFO_HISTORY_TIME,timeSpan);
     hisStack->setCurrentIndex(1);
 
+}
+
+void UkpmWidget::ukpm_set_choice_history()
+{
+    bool checked;
+
+    QString history_type = settings->getString(GPM_SETTINGS_INFO_HISTORY_TYPE);
+    int history_time = settings->getInt(GPM_SETTINGS_INFO_HISTORY_TIME);
+    if (history_type == NULL)
+        history_type = GPM_HISTORY_CHARGE_VALUE;
+    if (history_time == 0)
+        history_time = GPM_HISTORY_HOUR_VALUE;
+
+    if (QString::compare (history_type, GPM_HISTORY_RATE_VALUE) == 0)
+        typeCombox->setCurrentIndex(0);
+    else
+        typeCombox->setCurrentIndex(1);
+
+    if (history_time == GPM_HISTORY_MINUTE_VALUE)
+        spanCombox->setCurrentIndex(0);
+    else if (history_time == GPM_HISTORY_HOUR_VALUE)
+        spanCombox->setCurrentIndex(1);
+    else
+        spanCombox->setCurrentIndex(2);
+
+//    Q_EMIT spanCombox->currentIndexChanged(spanCombox->currentIndex());
+//    Q_EMIT sumTypeCombox->currentIndexChanged(sumTypeCombox->currentIndex());
+    checked = settings->getBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_SMOOTH);
+    hisCurveBox->setChecked(checked);
+//    Q_EMIT hisCurveBox->clicked(checked);
+    checked = settings->getBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_POINTS);
+    hisDataBox->setChecked(checked);
+//    Q_EMIT hisDataBox->clicked(checked);
+
     if(hisDataBox->isChecked())
     {
         if(hisCurveBox->isChecked())
@@ -895,9 +955,7 @@ void UkpmWidget::draw_history_graph(QList<QPointF> list)
             hisSeries->attachAxis(axisY);//连接数据集与
         }
     }
-
 }
-
 void UkpmWidget::ukpm_update_info_data_page (DEV* device, gint page)
 {
     if (page == 0)
@@ -911,6 +969,8 @@ void UkpmWidget::ukpm_update_info_data_page (DEV* device, gint page)
 void UkpmWidget::ukpm_update_info_page_stats (DEV* device)
 {
     Q_UNUSED(device);
+    if(current_device == NULL || !current_device->hasStat)
+        return;
     QString type;
     int index = sumTypeCombox->currentIndex();
 
@@ -940,6 +1000,8 @@ void UkpmWidget::ukpm_update_info_page_stats (DEV* device)
         return;
     }
     draw_stats_graph (list);
+//    ukpm_set_choice_sum();
+
 }
 
 void UkpmWidget::setSumTab()
@@ -1011,6 +1073,7 @@ void UkpmWidget::setSumTab()
     vLayout->addLayout(bottomLayout);
     stat_widget->setLayout(vLayout);
     stat_widget->hide();
+    ukpm_set_choice_sum();
 }
 void UkpmWidget::showHisDataPoint(bool flag)
 {
@@ -1172,6 +1235,7 @@ void UkpmWidget::setHistoryTab()
     vLayout->addLayout(bottomLayout);
     his_widget->setLayout(vLayout);
     his_widget->hide();
+    ukpm_set_choice_history();
 }
 
 void UkpmWidget::onExitButtonClicked()
@@ -1302,27 +1366,17 @@ QString UkpmWidget::getWidgetAxis(uint value)
 
 }
 
-void UkpmWidget::sortDcTable(int id)
-{
-//    detailDcTable->sortByColumn(id,Qt::AscendingOrder);
-}
-
-void UkpmWidget::sortBtrTable(int id)
-{
-//    detailBTRTable->sortByColumn(id,Qt::AscendingOrder);
-}
-
-
 void UkpmWidget::onItemChanged(QListWidgetItem* cur,QListWidgetItem* pre)
 {
     Q_UNUSED(pre);
     current_device = dev_item.key(cur)->m_dev;
-    //qDebug()<<"onItemChanged";
+//    qDebug()<<"onItemChanged";
     ukpm_update_info_data(current_device);
 }
 
 void UkpmWidget::getSlots()
 {
+
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
                                          QString("device-added"),this,SLOT(deviceAdded(QDBusMessage)));
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
@@ -1341,59 +1395,6 @@ void UkpmWidget::getSlots()
     connect(title,SIGNAL(signalButtonHelpClicked()),this,SLOT(helpFormat()));
     connect(title,SIGNAL(signalButtonCloseClicked()),this,SLOT(onExitButtonClicked()));
 
-    ////
-    bool checked;
-//    uint page = settings->getInt(GPM_SETTINGS_INFO_PAGE_NUMBER);
-//    tabWidgetBTR->setCurrentIndex(page);
-
-    QString history_type = settings->getString(GPM_SETTINGS_INFO_HISTORY_TYPE);
-    int history_time = settings->getInt(GPM_SETTINGS_INFO_HISTORY_TIME);
-    if (history_type == NULL)
-        history_type = GPM_HISTORY_CHARGE_VALUE;
-    if (history_time == 0)
-        history_time = GPM_HISTORY_HOUR_VALUE;
-
-    if (QString::compare (history_type, GPM_HISTORY_RATE_VALUE) == 0)
-        typeCombox->setCurrentIndex(0);
-    else
-        typeCombox->setCurrentIndex(1);
-
-    if (history_time == GPM_HISTORY_MINUTE_VALUE)
-        spanCombox->setCurrentIndex(0);
-    else if (history_time == GPM_HISTORY_HOUR_VALUE)
-        spanCombox->setCurrentIndex(1);
-    else
-        spanCombox->setCurrentIndex(2);
-
-
-    QString stats_type = settings->getString(GPM_SETTINGS_INFO_STATS_TYPE);
-    if(stats_type == NULL)
-        stats_type = GPM_STATS_CHARGE_DATA_VALUE;
-    qDebug()<< stats_type;
-    if (QString::compare( stats_type, GPM_STATS_CHARGE_DATA_VALUE) == 0)
-        sumTypeCombox->setCurrentIndex(0);
-    else if (QString::compare(stats_type, GPM_STATS_CHARGE_ACCURACY_VALUE) == 0)
-        sumTypeCombox->setCurrentIndex(1);
-    else if (QString::compare (stats_type, GPM_STATS_DISCHARGE_DATA_VALUE) == 0)
-        sumTypeCombox->setCurrentIndex(2);
-    else
-        sumTypeCombox->setCurrentIndex(3);
-
-    Q_EMIT spanCombox->currentIndexChanged(spanCombox->currentIndex());
-    Q_EMIT sumTypeCombox->currentIndexChanged(sumTypeCombox->currentIndex());
-    checked = settings->getBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_SMOOTH);
-    hisCurveBox->setChecked(checked);
-    Q_EMIT hisCurveBox->clicked(checked);
-    checked = settings->getBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_POINTS);
-    hisDataBox->setChecked(checked);
-    Q_EMIT hisDataBox->clicked(checked);
-    checked = settings->getBool(GPM_SETTINGS_INFO_STATS_GRAPH_SMOOTH);
-    sumCurveBox->setChecked(checked);
-    Q_EMIT sumCurveBox->clicked(checked);
-    checked = settings->getBool(GPM_SETTINGS_INFO_STATS_GRAPH_POINTS);
-    sumDataBox->setChecked(checked);
-    Q_EMIT sumDataBox->clicked(checked);
-
     for(int i = 0; i < devices.size(); i++)
     {
         QDBusConnection::systemBus().connect(DBUS_SERVICE,devices.at(i)->m_dev->path,DBUS_INTERFACE,
@@ -1401,18 +1402,78 @@ void UkpmWidget::getSlots()
 
         connect(devices.at(i),SIGNAL(device_property_changed(QString)),this,SLOT(devPropertiesChanged(QString)));
     }
+    upHistoryType(0);
+    upStatsType(0);
 }
 
 void UkpmWidget::upHistoryType(int index)
 {
     Q_UNUSED(index);
 //    qDebug()<<"upHistoryType";
+    int num = spanCombox->currentIndex();
+    if(num == TENM)
+    {
+        timeSpan = 600;
+    }
+    else if(num == TWOH)
+    {
+        timeSpan = 2*60*60;
+    }
+    else if(num == SIXH)
+    {
+        timeSpan = 6*60*60;
+    }
+    else if(num == ONED)
+    {
+        timeSpan = 24*60*60;
+    }
+    else if(num == ONEW)
+    {
+        timeSpan = 7*24*60*60;
+    }
+    settings->setInt(GPM_SETTINGS_INFO_HISTORY_TIME,timeSpan);
+
+    num = typeCombox->currentIndex();
+    if (num==RATE) {
+
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_RATE_VALUE);
+
+    } else if (num==VOLUME) {
+
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_CHARGE_VALUE);
+
+    } else if (num==CHARGE_DURATION) {
+
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_TIME_FULL_VALUE);
+
+    }else if (num==DISCHARGING_DURATION) {
+
+        settings->setString(GPM_SETTINGS_INFO_HISTORY_TYPE,GPM_HISTORY_TIME_EMPTY_VALUE);
+    }
     ukpm_update_info_page_history(current_device);
 }
 
 void UkpmWidget::upStatsType(int index)
 {
     Q_UNUSED(index);
+//    qDebug()<<"upStatsType";
+    int num = sumTypeCombox->currentIndex();
+    if(num == CHARGE)
+    {
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_CHARGE_DATA_VALUE);
+    }
+    else if(num == CHARGE_ACCURENCY)
+    {
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_CHARGE_ACCURACY_VALUE);
+    }
+    else if(num == DISCHARGING)
+    {
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_DISCHARGE_DATA_VALUE);
+    }
+    else if(num == DISCHARGING_ACCURENCY)
+    {
+        settings->setString(GPM_SETTINGS_INFO_STATS_TYPE,GPM_STATS_DISCHARGE_ACCURACY_VALUE);
+    }
     ukpm_update_info_page_stats(current_device);
 }
 
@@ -1430,6 +1491,7 @@ void UkpmWidget::onPageChanged(int index)
 void UkpmWidget::drawHisSpineline(bool flag)
 {
     settings->setBool(GPM_SETTINGS_INFO_HISTORY_GRAPH_SMOOTH,flag);
+//    ukpm_update_info_page_history(current_device);
     if(flag)
     {
         hisChart->removeSeries(hisSeries);
@@ -1457,6 +1519,7 @@ void UkpmWidget::drawHisSpineline(bool flag)
 void UkpmWidget::drawSumSpineline(bool flag)
 {
     settings->setBool(GPM_SETTINGS_INFO_STATS_GRAPH_SMOOTH,flag);
+//    ukpm_update_info_page_stats(current_device);
     if(flag)
     {
         sumChart->removeSeries(sumSeries);
@@ -1553,6 +1616,12 @@ void UkpmWidget::deviceAdded(QDBusMessage  msg)
         listItem.insert(objectPath,item);
 
         DEVICE *dev = new DEVICE(this);
+        dev->m_dev->kind = (UpDeviceKind)kindEnum;
+        dev->m_dev->path = objectPath.path();
+        qDebug()<<dev->m_dev->path;
+        dev->m_dev->hasHistory = map.value(QString("HasHistory")).toBool();
+        dev->m_dev->hasStat = map.value(QString("HasStatistics")).toBool();
+
         dev->m_dev->Type = up_device_kind_to_string ((UpDeviceKind)map.value(QString("Type")).toInt());
         dev->m_dev->Model = map.value(QString("Model")).toString();
         dev->m_dev->Device = map.value(QString("NativePath")).toString();
@@ -1675,6 +1744,9 @@ void UkpmWidget::setupUI()
 
         listWidget->setItemSelected(listWidget->item(0),true);
         ukpm_update_info_data (current_device);
+    }
+    else {
+        current_device = NULL;
     }
 }
 

@@ -166,8 +166,6 @@ public:
     void setDetailTab();
 
 public Q_SLOTS:
-    void sortDcTable(int id);
-    void sortBtrTable(int id);
     void onActivatedIcon(QSystemTrayIcon::ActivationReason reason);
     void onShow();
     void showHisDataPoint(bool flag);
@@ -235,6 +233,8 @@ public:
     QStandardItemModel* model;
     QTableView *tableView;
     int index_old;
+    void ukpm_set_choice_sum();
+    void ukpm_set_choice_history();
 };
 
 #endif // UKPM_WIDGET_H

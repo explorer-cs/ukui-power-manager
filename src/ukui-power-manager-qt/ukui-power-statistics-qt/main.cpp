@@ -12,21 +12,20 @@ int main(int argc, char *argv[])
         return 0;
     }
     QApplication a(argc, argv);
-    QStringList arguments = QApplication::arguments();
-    if(arguments.size() < 3)
-    {
-	qDebug()<<"this program is called by ukui-power-manager with 3 arguments totally";
-        qDebug()<<"device supported now, line_power and battery";
-        qDebug()<<"for example: ./run --device battery";
-        return 0;
-    }
-    QString dev = arguments.at(2);
-    if(!(dev.contains("battery")) && !(dev.contains("line_power")))
-    {
-        qDebug()<<"device supported now, line_power and battery";
-        qDebug()<<"for example: ./run --device battery";
-        return 0;
-    }
+//    if(argc < 3)
+//    {
+//	qDebug()<<"this program is called by ukui-power-manager with 3 arguments totally";
+//        qDebug()<<"device supported now, line_power and battery";
+//        qDebug()<<"for example: ./run --device battery";
+//        return 0;
+//    }
+//    QString dev = argv[2];
+//    if(!(dev.contains("battery")) && !(dev.contains("line_power")))
+//    {
+//        qDebug()<<"device supported now, line_power and battery";
+//        qDebug()<<"for example: ./run --device battery";
+//        return 0;
+//    }
     QString locale = QLocale::system().name();
     QTranslator translator;
     QString qmfile = QString(":/locale/%1.qm").arg(locale);
