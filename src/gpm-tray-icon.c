@@ -64,7 +64,7 @@ struct GpmTrayIconPrivate
 	GtkStatusIcon		*status_icon;
 	gboolean		 show_actions;
         GtkWidget               *main_window;//kobe
-        GSettings               *panel_settings;//kobe
+        //GSettings               *panel_settings;//kobe
 };
 
 G_DEFINE_TYPE (GpmTrayIcon, gpm_tray_icon, G_TYPE_OBJECT)
@@ -544,6 +544,7 @@ gpm_tray_icon_create_menu (GpmTrayIcon *icon)
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
 
     /*powerpolicy*/
+    /*
     item = gtk_image_menu_item_new_with_mnemonic (_("_Performance Mode"));
     g_signal_connect (G_OBJECT (item), "activate",
               G_CALLBACK (gpm_tray_icon_show_perf_cb), icon);
@@ -552,6 +553,7 @@ gpm_tray_icon_create_menu (GpmTrayIcon *icon)
     g_signal_connect (G_OBJECT (item), "activate",
               G_CALLBACK (gpm_tray_icon_show_save_cb), icon);
     gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
+    */
 	
 	/*Set up custom panel menu theme support-gtk3 only */
 	GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (menu));
@@ -928,7 +930,7 @@ gpm_tray_icon_init (GpmTrayIcon *icon)
 	icon->priv->engine = gpm_engine_new ();
 
         //kobe
-        icon->priv->panel_settings = g_settings_new_with_path ("org.ukui.panel.toplevel", "/org/ukui/panel/toplevels/bottom/");
+        //icon->priv->panel_settings = g_settings_new_with_path ("org.ukui.panel.toplevel", "/org/ukui/panel/toplevels/bottom/");
 
 	icon->priv->settings = g_settings_new (GPM_SETTINGS_SCHEMA);
 	g_signal_connect (icon->priv->settings, "changed",
@@ -964,7 +966,7 @@ gpm_tray_icon_finalize (GObject *object)
 	tray_icon = GPM_TRAY_ICON (object);
 
         //kobe
-        g_object_unref (tray_icon->priv->panel_settings);
+        //g_object_unref (tray_icon->priv->panel_settings);
 
 	g_object_unref (tray_icon->priv->status_icon);
 	g_object_unref (tray_icon->priv->engine);
