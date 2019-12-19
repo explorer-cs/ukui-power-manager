@@ -1706,8 +1706,8 @@ void UkpmWidget::deviceRemoved(QDBusMessage  msg)
 void UkpmWidget::setupUI()
 {
     QDesktopWidget *deskdop = QApplication::desktop();
-    resize(deskdop->width()/2,deskdop->height()/2);
-//    resize(900,580);
+//    resize(deskdop->width()/2,deskdop->height()/2);
+    resize(900,580);
     move((deskdop->width() - this->width())/2, (deskdop->height() - this->height())/2);
 //    setWindowFlags(windowFlags()&~Qt::WindowMaximizeButtonHint);
 //    setWindowTitle(tr("Power Statistics"));
