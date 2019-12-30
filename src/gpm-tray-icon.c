@@ -489,6 +489,71 @@ gpm_tray_icon_add_primary_device (GpmTrayIcon *icon, GtkMenu *menu, UpDevice *de
 	g_free (string);
 }
 
+static char* gpm_tray_caculate_theme (GtkWidget *widget)
+{
+    GdkColor color;
+    GtkStyle *style=gtk_rc_get_style(widget);
+    gtk_style_lookup_color (style,"panel_normal_bg_color",&color);
+
+    char color_hex[10]={0};
+    char color_hex_red[4]={0};
+    char color_hex_green[4]={0};
+    char color_hex_blue[4]={0};
+
+    if((color.red/257/16)==0){
+        sprintf(color_hex_red,"0%x",color.red/257);
+    } else {
+        sprintf(color_hex_red,"%x",color.red/257);
+    }
+    if((color.green/257)/16==0){
+        sprintf(color_hex_green,"0%x",color.green/257);
+    } else {
+        sprintf(color_hex_green,"%x",color.green/257);
+    }
+    if((color.blue/257)/16==0){
+        sprintf(color_hex_blue,"0%x",color.blue/257);
+    } else {
+        sprintf(color_hex_blue,"%x",color.blue/257);
+    }
+    sprintf(color_hex,"\#%s%s%s",color_hex_red,color_hex_green,color_hex_blue);
+//    g_message("colorhex:%s----------------",color_hex);
+    char *script =             "* {"
+                               "color: #f2f2f2;"
+                               "background-color: #283138;"
+                               "opacity: 0.8;"
+                               "}";
+    if (!strcmp (color_hex, "#283138")){
+        script =
+            "* {"
+            "color: #f2f2f2;"
+            "background-color: #283138;"
+            "opacity: 0.7;"
+            "}"
+            ;
+
+    }
+    else if(!strcmp (color_hex, "#f2f2f2"))
+    {
+        script =
+            "* {"
+            "color: #283138;"
+            "background-color: #f2f2f2;"
+            "opacity: 0.7;"
+            "}"
+            ;
+    }
+    return  script;
+}
+
+static gpm_tray_set_theme(GtkWidget *widget, const gchar *data)
+{
+    GtkCssProvider *provider = gtk_css_provider_new();
+    GtkStyleContext *context = gtk_widget_get_style_context(widget);
+    gtk_css_provider_load_from_data(provider,data,-1,NULL);
+    gtk_style_context_add_provider(context,GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
+    g_object_unref(provider);
+}
+
 /**
  * gpm_tray_icon_create_menu:
  *
@@ -573,6 +638,8 @@ gpm_tray_icon_create_menu (GpmTrayIcon *icon)
 			  G_CALLBACK (gpm_tray_icon_show_about_cb), icon);
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), item);
 
+    gchar *css = gpm_tray_caculate_theme(GTK_WIDGET (menu));
+   	gpm_tray_set_theme(GTK_WIDGET(menu),css);
 skip_prefs:
 	if (device != NULL)
 		g_object_unref (device);
