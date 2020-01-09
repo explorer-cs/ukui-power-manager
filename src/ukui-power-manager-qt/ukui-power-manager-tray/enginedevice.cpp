@@ -61,8 +61,8 @@ EngineDevice::EngineDevice(QObject *parent) : QObject(parent)
 void EngineDevice::engine_policy_settings_cb()
 {
     qDebug()<<"policy setting changed";
-    QVariant var =settings->get(GPM_SETTINGS_KEY_POLICY);
-    icon_policy = (GpmIconPolicy)var.value<int>();
+//    QVariant var =settings->get(GPM_SETTINGS_KEY_POLICY);
+//    icon_policy = (GpmIconPolicy)var.value<int>();
 }
 
 void EngineDevice::power_device_add(QDBusMessage msg)

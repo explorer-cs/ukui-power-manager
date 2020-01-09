@@ -227,7 +227,7 @@ int MainWindow::get_engine_dev_number()
 void MainWindow::get_power_list()
 {
     // chushihua
-//    pow_widget = new QWidget(scroll_area);
+    pow_widget = new QWidget(scroll_area);
     pow_widget->resize(230, 148-16-61);
     scroll_area->setWidget(pow_widget);
 
@@ -235,6 +235,8 @@ void MainWindow::get_power_list()
     int ht = pow_widget->height();
 //    int size = 2;
     int size = get_engine_dev_number();
+    if(size==0)
+        size = 1;
 
     resize(230+1,88 + size*61);
     scroll_area->resize(230, 88 + size*61-16-61);
