@@ -1,20 +1,20 @@
 #ifndef ENGINECOMMON_H
 #define ENGINECOMMON_H
 
-#define	GPM_DBUS_SERVICE		"org.mate.PowerManager"
-#define	GPM_DBUS_INTERFACE		"org.mate.PowerManager"
-#define	GPM_DBUS_INTERFACE_BACKLIGHT	"org.mate.PowerManager.Backlight"
-#define	GPM_DBUS_INTERFACE_KBD_BACKLIGHT	"org.mate.PowerManager.KbdBacklight"
-#define	GPM_DBUS_PATH			"/org/mate/PowerManager"
-#define	GPM_DBUS_PATH_BACKLIGHT		"/org/mate/PowerManager/Backlight"
-#define GPM_DBUS_PATH_KBD_BACKLIGHT    "/org/mate/PowerManager/KbdBacklight"
+#define	GPM_DBUS_SERVICE		"org.ukui.PowerManager"
+#define	GPM_DBUS_INTERFACE		"org.ukui.PowerManager"
+#define	GPM_DBUS_INTERFACE_BACKLIGHT	"org.ukui.PowerManager.Backlight"
+#define	GPM_DBUS_INTERFACE_KBD_BACKLIGHT	"org.ukui.PowerManager.KbdBacklight"
+#define	GPM_DBUS_PATH			"/org/ukui/PowerManager"
+#define	GPM_DBUS_PATH_BACKLIGHT		"/org/ukui/PowerManager/Backlight"
+#define GPM_DBUS_PATH_KBD_BACKLIGHT    "/org/ukui/PowerManager/KbdBacklight"
 
 /* common descriptions of this program */
 #define GPM_NAME 			_("Power Manager")
 #define GPM_DESCRIPTION 		_("Power Manager for the MATE desktop")
 
 /* schema location */
-#define GPM_SETTINGS_SCHEMA				"org.mate.power-manager"
+#define GPM_SETTINGS_SCHEMA				"org.ukui.power-manager"
 
 /* actions */
 #define GPM_SETTINGS_ACTION_CRITICAL_UPS		"action-critical-ups"
@@ -103,7 +103,7 @@
 #define GPM_SETTINGS_INFO_LAST_DEVICE			"info-last-device"
 
 /* mate-screensaver */
-#define GS_SETTINGS_SCHEMA				"org.mate.screensaver"
+#define GS_SETTINGS_SCHEMA				"org.ukui.screensaver"
 #define GS_SETTINGS_PREF_LOCK_ENABLED			"lock-enabled"
 
 // kobe
