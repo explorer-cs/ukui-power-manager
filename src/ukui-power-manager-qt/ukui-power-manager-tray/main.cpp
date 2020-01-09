@@ -1,6 +1,8 @@
-#include "widget.h"
+#include "mainwindow.h"
 #include <QApplication>
+#include <QFile>
 #include <QSharedMemory>
+#include <QDebug>
 
 int main(int argc, char *argv[])
 {
@@ -26,9 +28,12 @@ int main(int argc, char *argv[])
         qWarning()<<QStringLiteral("program is already running! exit!");
         exit(0);
     }
-
-    Widget w;
-//    w.show();
+    QFile file(":/main.qss");
+    file.open(QFile::ReadOnly);
+    qApp->setStyleSheet(file.readAll());
+    file.close();
+    MainWindow w;
+    w.hide();
 
     return a.exec();
 }

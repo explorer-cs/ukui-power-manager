@@ -2,7 +2,6 @@
 #define DEVICE_H
 
 #include <QDBusMessage>
-//#include </usr/include/libupower-glib/up-types.h>
 #include "engine-common.h"
 
 struct DEV
@@ -35,7 +34,6 @@ struct DEV
     bool hasHistory;
     bool hasStat;
     QString path;
-//    uint warnlevel;
 
     bool autorange_x;
     int start_x;

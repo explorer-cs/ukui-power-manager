@@ -1,0 +1,36 @@
+/*菜单*/
+QMenu {
+    background-color: rgba(8,10,12,90%);
+}
+
+QMenu::item {
+    color: #ffffff;
+    padding: 4px 25px 4px 20px;
+    border: 1px solid transparent;
+    height: 34px;
+}
+
+QMenu::item:selected{
+    background-color: rgba(190,216,239,20%);
+}
+
+QMenu::item:checked{
+    background-color: rgba(190,216,239,12%);
+}
+
+QWidget{border:0px;}
+
+QMainWindow#MainWindow{
+    border:0px;
+    background-color:#000000;
+}
+
+QLabel {
+    font-size:13px;
+    color:#ffffff;
+}
+
+#mPowerWidget{
+    border:1px solid #626c6e;
+    background-color: rgba(21,26,30,90%);
+}
