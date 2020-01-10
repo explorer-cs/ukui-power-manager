@@ -160,17 +160,17 @@ void MainWindow::initUi()
     ui->savelb->setStyleSheet("QLabel{background-color:#283138;}");
     ui->healthlb->setStyleSheet("QLabel{background-color:#283138;}");
 
-    ui->centralWidget->setStyleSheet("{border:1px solid #626c6e;background-color:#151a1e;}");
+//    ui->centralWidget->setStyleSheet("{border:1px solid #626c6e;background-color:#151a1e;}");
 
     ui->power_title->setText(tr("电源管理"));
-    ui->power_title->setStyleSheet("{background-color:rgba(8,10,12,0.6);}");
+//    ui->power_title->setStyleSheet("{background-color:rgba(8,10,12,0.6);}");
 
     scroll_area->setStyleSheet("QScrollArea{border:none;}");
     scroll_area->viewport()->setStyleSheet("background-color:transparent;");
 
 
-    pow_widget->setStyleSheet("{font-size:12px;color:white;border:1px solid rgba(255,255,255,0.1);background:transparent;background-color:rgba(0,0,0,0.2);}"
-                                  "Pressed{border:1px solid rgba(255,255,255,0.5);background:transparent;background-color:rgba(255,255,255,0.1);}");
+//    pow_widget->setStyleSheet("{font-size:12px;color:white;border:1px solid rgba(255,255,255,0.1);background:transparent;background-color:rgba(0,0,0,0.2);}"
+//                                  "Pressed{border:1px solid rgba(255,255,255,0.5);background:transparent;background-color:rgba(255,255,255,0.1);}");
 
     ui->brightbtn->setStyleSheet("QPushButton{border:none;}");
     ui->brighttext->setStyleSheet("QLabel{font-size:13px;color:#ffffff;}");
@@ -223,6 +223,7 @@ int MainWindow::get_engine_dev_number()
             text = QString("%1% available power").arg(percentage);
         number++;
     }
+    return  number;
 }
 void MainWindow::get_power_list()
 {

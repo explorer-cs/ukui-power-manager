@@ -24,8 +24,8 @@ struct DEV
     QString IsRechargeable;
     double Percentage;
     UpDeviceState State;
-    uint TimeToEmpty;
-    uint TimeToFull;
+    qlonglong TimeToEmpty;
+    qlonglong TimeToFull;
     QString Voltage;
     double Capacity;
     QString update_time;

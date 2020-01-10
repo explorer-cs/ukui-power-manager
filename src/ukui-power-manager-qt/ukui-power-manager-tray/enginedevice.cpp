@@ -150,7 +150,7 @@ void EngineDevice::getProperty(QString path,DEV& dev)
         dev.Model = map.value(QString("Model")).toString();
         dev.Device = map.value(QString("NativePath")).toString();
 
-        dev.Capacity = (map.value(QString("Capacity")).toDouble(), 'f', 1);
+        dev.Capacity = (map.value(QString("Capacity")).toDouble());
         dev.Energy = QString::number(map.value(QString("Energy")).toDouble(), 'f', 1)+ " Wh";
         dev.EnergyEmpty= QString::number(map.value(QString("EnergyEmpty")).toDouble(), 'f', 1)+ " Wh";
         dev.EnergyFull = QString::number(map.value(QString("EnergyFull")).toDouble(), 'f', 1)+ " Wh";
@@ -451,14 +451,14 @@ bool EngineDevice::engine_recalculate_summary ()
     summary = engine_get_summary ();
     if (previous_summary.isNull()) {
         previous_summary = summary;
-        printf ("** EMIT: summary-changed(1): %s", summary);
+//        printf ("** EMIT: summary-changed(1): %s\n", summary);
         Q_EMIT engine_signal_summary_change(summary);
         return true;
     }
 
     if (previous_summary != summary) {
         previous_summary = summary;
-        printf ("** EMIT: summary-changed(2): %s", summary);
+//        printf ("** EMIT: summary-changed(2): %s\n", summary);
         Q_EMIT engine_signal_summary_change(summary);
         return true;
     }
@@ -767,6 +767,7 @@ QString EngineDevice::engine_get_device_icon (DEVICE *device)
         if (!is_present) {
             /* battery missing */
             result.sprintf ("gpm-%s-missing", prefix);
+//            result.sprintf ("gpm-%s-missing", prefix.toStdString().c_str());
 
         } else if (state == UP_DEVICE_STATE_FULLY_CHARGED) {
             result.sprintf ("gpm-%s-100", prefix);
