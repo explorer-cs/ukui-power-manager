@@ -62,5 +62,7 @@
         <file>22x22/status/gpm-ups-100.png</file>
         <file>22x22/status/gpm-ups-missing.png</file>
         <file>main.qss</file>
+        <file>en.qm</file>
+        <file>zh_CN.qm</file>
     </qresource>
 </RCC>

@@ -1,5 +1,6 @@
 #include "device_widget.h"
 #include "ui_devicewidget.h"
+#include <QDebug>
 
 DeviceWidget::DeviceWidget(QWidget *parent) :
     QWidget(parent),
@@ -15,8 +16,11 @@ DeviceWidget::~DeviceWidget()
 
 void DeviceWidget::setIcon(QString name)
 {
-    QPixmap pix(name);
-    ui->devicon->setPixmap(pix);
+    QIcon icon = QIcon::fromTheme(name);
+    qDebug()<<icon.name()<<"--------------------------------";
+//    QPixmap pix(icon.name());
+//    ui->devicon->setPixmap(pix);
+    ui->btnicon->setIcon(icon);
 }
 
 void DeviceWidget::setPercent(QString perct)

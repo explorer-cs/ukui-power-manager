@@ -36,8 +36,8 @@ public Q_SLOTS:
     void onActivatedIcon(QSystemTrayIcon::ActivationReason reason);
     void set_preference_func();
     void show_percentage_func();
-    void on_icon_changed(QString str);
-    void on_sum_changed(QString str);
+    void onIconChanged(QString str);
+    void onSumChanged(QString str);
 private:
 //    QGSettings *setting;
 //    PowerDispWidget *dispWidget;

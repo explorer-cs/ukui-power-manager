@@ -54,6 +54,8 @@ EngineDevice::EngineDevice(QObject *parent) : QObject(parent)
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
                                          QString("device-removed"),this,SLOT(power_device_remove(QDBusMessage)));
     settings = new QGSettings(GPM_SETTINGS_SCHEMA);
+    icon_policy = GPM_ICON_POLICY_PRESENT;
+
     engine_policy_settings_cb();
     connect(settings,SIGNAL(changed(const QString&)),this,SLOT(engine_policy_settings_cb()));
 }
@@ -313,7 +315,7 @@ QString EngineDevice::power_device_get_icon()
 {
     QString icon;
 
-    icon_policy = GPM_ICON_POLICY_PRESENT;
+//    icon_policy = GPM_ICON_POLICY_ALWAYS;
     /* GPM_ICON_POLICY_NEVER */
     if (icon_policy == GPM_ICON_POLICY_NEVER) {
         return QString();
@@ -496,6 +498,181 @@ QString EngineDevice::engine_get_summary ()
 }
 
 /**
+ *
+ * Returns a localised timestring
+ *
+ * Return value: The time string, e.g. "2 hours 3 minutes"
+ **/
+QString EngineDevice::gpm_get_timestring (uint time_secs)
+{
+    int  hours;
+    int  minutes;
+    QString result;
+    QString tmp;
+    QString hour_str;
+    QString minute_str;
+    /* Add 0.5 to do rounding */
+    minutes = (int) ( ( time_secs / 60.0 ) + 0.5 );
+
+    if (minutes == 0) {
+        result = (tr("Unknown time"));
+        return result;
+    }
+
+    if (minutes < 60) {
+        if(minutes==1)
+            minute_str = tr("minute");
+        else
+            minute_str=tr("minutes");
+//        tmp = tr("%1 %2");
+        result=QString("%1 %2").arg(minutes).arg(minute_str);
+        return result;
+    }
+
+    hours = minutes / 60;
+    minutes = minutes % 60;
+
+    if (minutes == 0)
+    {
+        if(hours == 1)
+            hour_str = tr("hour");
+        else
+            hour_str = tr("hours");
+        result=QString("%1 %2").arg(hours).arg(hour_str);
+    }
+    else
+    {
+        if(minutes==1)
+            minute_str = tr("minute");
+        else
+            minute_str=tr("minutes");
+        if(hours == 1)
+            hour_str = tr("hour");
+        else
+            hour_str = tr("hours");
+
+        result = QString("%1 %2 %3 %4").arg(hours).arg(hour_str).arg(minutes).arg(minute_str);
+
+    }
+    return result;
+}
+
+
+/**
+ * engine_get_device_predict:
+ **/
+QString EngineDevice::engine_get_device_predict(DEVICE* dv)
+{
+    QString result;
+
+    QString kind_desc;
+    uint time_to_full_round;
+    uint time_to_empty_round;
+    QString time_to_full_str;
+    QString time_to_empty_str;
+    UpDeviceKind kind;
+    UpDeviceState state;
+    double percentage;
+    bool is_present;
+    uint time_to_full;
+    uint time_to_empty;
+
+    kind = dv->m_dev.kind;
+    is_present = dv->m_dev.IsPresent;
+    state = dv->m_dev.State;
+    percentage = dv->m_dev.Percentage;
+
+    time_to_empty = dv->m_dev.TimeToEmpty;
+    time_to_full = dv->m_dev.TimeToFull;
+    if (!is_present)
+        return NULL;
+
+    kind_desc = engine_kind_to_localised_text (kind, 1);
+
+    if (kind == UP_DEVICE_KIND_MOUSE ||
+        kind == UP_DEVICE_KIND_KEYBOARD ||
+        kind == UP_DEVICE_KIND_PDA)
+    {
+        result = QString("%1(%2%)").arg(kind_desc).arg(percentage);
+        return result;
+    }
+
+    /* we care if we are on AC */
+//    if (kind == UP_DEVICE_KIND_PHONE) {
+//        if (state == UP_DEVICE_STATE_CHARGING || !state == UP_DEVICE_STATE_DISCHARGING) {
+
+//            result = QString("%1 charging (%2%)").arg(kind_desc).arg(percentage);
+//            return result;
+//        }
+//        result = QString("%1 (%2%)").arg(kind_desc).arg(percentage);
+
+//        return result;
+//    }
+
+    time_to_full_round = precision_round_down (time_to_full, GPM_UP_TIME_PRECISION);
+    time_to_empty_round = precision_round_down (time_to_empty, GPM_UP_TIME_PRECISION);
+
+    if (state == UP_DEVICE_STATE_FULLY_CHARGED) {
+
+        if (kind == UP_DEVICE_KIND_BATTERY && time_to_empty_round > GPM_UP_TEXT_MIN_TIME) {
+            time_to_empty_str = gpm_get_timestring (time_to_empty_round);
+//            result = QString("Battery is fully charged.\nProvides %1 laptop runtime").arg(time_to_empty_str);
+            result = time_to_empty_str;
+
+        } else {
+            result = tr("fully charged");
+        }
+
+    } else if (state == UP_DEVICE_STATE_DISCHARGING) {
+
+        if (time_to_empty_round > GPM_UP_TEXT_MIN_TIME) {
+            time_to_empty_str = gpm_get_timestring (time_to_empty_round);
+//            result = QString("%1 %2 remaining (%3%)").arg(kind_desc).arg(time_to_empty_str).arg(percentage);
+            result = time_to_empty_str;
+
+        } else {
+            result = tr("discharging(%1%)").arg(percentage);
+
+        }
+
+    } else if (state == UP_DEVICE_STATE_CHARGING) {
+
+        if (time_to_full_round > GPM_UP_TEXT_MIN_TIME &&
+            time_to_empty_round > GPM_UP_TEXT_MIN_TIME) {
+
+            /* display both discharge and charge time */
+            time_to_full_str = gpm_get_timestring (time_to_full_round);
+            time_to_empty_str = gpm_get_timestring (time_to_empty_round);
+
+            /* TRANSLATORS: the device is charging, and we have a time to full and empty */
+//            result = QString("%1 %2 until charged (%3%)\nProvides %4 battery runtime")
+//                    .arg(kind_desc).arg(time_to_full_str).arg(percentage).arg(time_to_empty_str);
+            result = time_to_full_str;
+        } else if (time_to_full_round > GPM_UP_TEXT_MIN_TIME) {
+
+            /* display only charge time */
+            time_to_full_str = gpm_get_timestring (time_to_full_round);
+
+            /* TRANSLATORS: device is charging, and we have a time to full and a percentage */
+//            result = QString("%1 %2 until charged (%3%)").arg(kind_desc).arg(time_to_full_str).arg(percentage);
+            result = time_to_full_str;
+
+        } else {
+
+            /* TRANSLATORS: device is charging, but we only have a percentage */
+            result = tr("charging(%1%)").arg(percentage);
+
+        }
+
+    }  else {
+        printf ("in an undefined state we are not charging or "
+                 "discharging and the batteries are also not charged");
+        result = QString("%1(%2%)").arg(kind_desc).arg(percentage);
+    }
+    return result;
+}
+
+/**
  * engine_get_device_summary:
  **/
 QString EngineDevice::engine_get_device_summary(DEVICE* dv)
@@ -672,31 +849,31 @@ QString EngineDevice::engine_kind_to_localised_text (UpDeviceKind kind, uint num
     switch (kind) {
     case UP_DEVICE_KIND_LINE_POWER:
 
-        text =  ("AC adapter");
+        text =  tr("AC adapter");
         break;
     case UP_DEVICE_KIND_BATTERY:
         /* TRANSLATORS: laptop primary battery */
-        text =  ("Laptop battery");
+        text =  tr("Laptop battery");
         break;
     case UP_DEVICE_KIND_UPS:
         /* TRANSLATORS: battery-backed AC power source */
-        text =  ("UPS");
+        text =  tr("UPS");
         break;
     case UP_DEVICE_KIND_MONITOR:
         /* TRANSLATORS: a monitor is a device to measure voltage and current */
-        text =  ("Monitor");
+        text =  tr("Monitor");
         break;
     case UP_DEVICE_KIND_MOUSE:
         /* TRANSLATORS: wireless mice with internal batteries */
-        text =  ("Mouse");
+        text =  tr("Mouse");
         break;
     case UP_DEVICE_KIND_KEYBOARD:
         /* TRANSLATORS: wireless keyboard with internal battery */
-        text =  ("Keyboard");
+        text =  tr("Keyboard");
         break;
     case UP_DEVICE_KIND_PDA:
         /* TRANSLATORS: portable device */
-        text =  ("PDA");
+        text =  tr("PDA");
         break;
     case UP_DEVICE_KIND_PHONE:
         /* TRANSLATORS: cell phone (mobile...) */
@@ -704,19 +881,19 @@ QString EngineDevice::engine_kind_to_localised_text (UpDeviceKind kind, uint num
         break;
     case UP_DEVICE_KIND_MEDIA_PLAYER:
         /* TRANSLATORS: media player, mp3 etc */
-        text =  ("Media player");
+        text =  tr("Media player");
         break;
     case UP_DEVICE_KIND_TABLET:
         /* TRANSLATORS: tablet device */
-        text =  ("Tablet");
+        text =  tr("Tablet");
         break;
     case UP_DEVICE_KIND_COMPUTER:
         /* TRANSLATORS: tablet device */
-        text =  ("Computer");
+        text =  tr("Computer");
         break;
     default:
         printf ("enum unrecognised: %i", kind);
-//        text = engine_kind_to_string (kind);
+        text = tr ("unrecognised");
     }
     return text;
 }
@@ -844,13 +1021,13 @@ QString EngineDevice::engine_get_state_text (UpDeviceState state)
         state_text = tr("charging");
         break;
     case UP_DEVICE_STATE_DISCHARGING:
-        state_text = tr("charging");
+        state_text = tr("discharging");
         break;
     case UP_DEVICE_STATE_EMPTY:
-        state_text = tr("charging");
+        state_text = tr("empty");
         break;
     case UP_DEVICE_STATE_FULLY_CHARGED:
-        state_text = tr("charging");
+        state_text = tr("fully");
         break;
     default:
         state_text = tr("other");

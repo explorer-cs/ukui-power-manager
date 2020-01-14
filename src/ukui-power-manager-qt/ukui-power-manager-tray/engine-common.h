@@ -131,7 +131,6 @@ typedef enum {
     GPM_ACTION_POLICY_NOTHING
 } GpmActionPolicy;
 
-QString gpm_get_timestring				(uint		 time);
 
 
 typedef enum {

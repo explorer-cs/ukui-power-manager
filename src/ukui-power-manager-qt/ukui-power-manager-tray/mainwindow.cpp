@@ -15,19 +15,17 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ed = EngineDevice::getInstance();
-
     ui->setupUi(this);
-     initData();
+    initData();
 //    setting = new QGSettings(POWER_SCHEMA);
 //    connect(setting,SIGNAL(changed()))
 //    connect(setting,SIGNAL(changed(const QString &)),this,SLOT(iconThemeChanged()));
 
     trayIcon = new QSystemTrayIcon(this);
-    trayIcon->setIcon(QIcon(":/22x22/status/gpm-battery-000-charging.png"));
-    trayIcon->show();
+//    trayIcon->setIcon(QIcon(":/22x22/status/gpm-battery-000-charging.png"));
     connect(trayIcon,SIGNAL(activated(QSystemTrayIcon::ActivationReason)),this,SLOT(onActivatedIcon(QSystemTrayIcon::ActivationReason)));
-    connect(ed,SIGNAL(icon_changed(QString)),this,SLOT(on_icon_changed(QString)));
-    connect(ed,SIGNAL(engine_signal_summary_change(QString)),this,SLOT(on_sum_changed(QString)));
+    connect(ed,SIGNAL(icon_changed(QString)),this,SLOT(onIconChanged(QString)));
+    connect(ed,SIGNAL(engine_signal_summary_change(QString)),this,SLOT(onSumChanged(QString)));
 
     setObjectName("MainWindow");
     initUi();
@@ -36,27 +34,30 @@ MainWindow::MainWindow(QWidget *parent) :
     set_preference  = new QAction(menu);
     show_percentage = new QAction(menu);
     set_preference->setIcon(QIcon(":/22x22/status/gpm-ac-adapter.png"));
-    set_preference->setText("preference");
+    set_preference->setText("ShowPercentage");
     show_percentage->setIcon(QIcon(":/22x22/status/gpm-ac-adapter.png"));
-    show_percentage->setText("percentage");
+    show_percentage->setText("SetPowerSleep");
     connect(set_preference,&QAction::triggered,this,&MainWindow::set_preference_func);
     connect(show_percentage,&QAction::triggered,this,&MainWindow::show_percentage_func);
     menu->addAction(set_preference);
     menu->addAction(show_percentage);
 
     trayIcon->setContextMenu(menu);
+    ed->power_device_recalculate_icon();
+    trayIcon->show();
+
 }
 
-void MainWindow::on_sum_changed(QString str)
+void MainWindow::onSumChanged(QString str)
 {
     trayIcon->setToolTip(str);
     qDebug()<<str;
 }
 
-void MainWindow::on_icon_changed(QString str)
+void MainWindow::onIconChanged(QString str)
 {
-    str = ":/22x22/status/"+str+".png";
-    QIcon icon = QIcon(str);
+//    str = ":/22x22/status/"+str+".png";
+    QIcon icon = QIcon::fromTheme(str);
     trayIcon->setIcon(icon);;
 //    qDebug()<<str;
 }
@@ -162,7 +163,7 @@ void MainWindow::initUi()
 
 //    ui->centralWidget->setStyleSheet("{border:1px solid #626c6e;background-color:#151a1e;}");
 
-    ui->power_title->setText(tr("电源管理"));
+    ui->power_title->setText(tr("PowerManagement"));
 //    ui->power_title->setStyleSheet("{background-color:rgba(8,10,12,0.6);}");
 
     scroll_area->setStyleSheet("QScrollArea{border:none;}");
@@ -178,15 +179,15 @@ void MainWindow::initUi()
 
     ui->savebtn->setStyleSheet("QPushButton{border:none;}");
 //    ui->savetext->setStyleSheet("QLabel{font-size:13px;color:#ffffff;}");
-    ui->savetext->setText(tr("节能模式"));
+    ui->savetext->setText(tr("PowerSaveMode"));
     ui->saveicon->setStyleSheet("QLabel{background-image:url(:/22x22/apps/mate-brightness-applet.png);}");
     ui->healthicon->setStyleSheet("QLabel{background-image:url(:/22x22/apps/mate-brightness-applet.png);}");
     ui->brighticon->setStyleSheet("QLabel{background-image:url(:/22x22/apps/mate-brightness-applet.png);}");
 
     ui->healthbtn->setStyleSheet("QPushButton{border:none;}");
 //    ui->healthtext->setStyleSheet("QLabel{background-image:url(:/res/x/setup.png);}");
-    ui->healthtext->setText(tr("电池养护"));
-    ui->brighttext->setText(tr("亮度"));
+    ui->healthtext->setText(tr("BatterySave"));
+    ui->brighttext->setText(tr("Brightness"));
     get_power_list();
 //    ui->brightlb->setParent(ui->brightbtn);
 //    ui->healthlb->setParent(ui->healthbtn);
@@ -195,8 +196,8 @@ void MainWindow::initUi()
 
 int MainWindow::get_engine_dev_number()
 {
-    QString text;
-    qreal percentage;
+//    QString text;
+//    qreal percentage;
     int len = ed->devices.size();
     int number = 0;
     for(int i = 0; i < len; i++)
@@ -205,22 +206,7 @@ int MainWindow::get_engine_dev_number()
         dv = ed->devices.at(i);
         if(dv->m_dev.kind == UP_DEVICE_KIND_LINE_POWER)
             continue;
-        QString icon_name = ed->engine_get_device_icon(dv);// = get_devie_icon(deviceNames.at(i),percentage);
-        percentage = dv->m_dev.Percentage;
-        icon_name = ":/status/" + icon_name + ".png";
-        bool is_charging = false;
-        /* generate the image */
-        if (icon_name.contains("charging"))
-            is_charging = true;
-        /* generate the label */
-        if (is_charging)
-        {
-            text = QString("%1% available power").arg(percentage);
-            text.append("\n");
-            text.append("(The power is connected and is charging)");
-        }
-        else
-            text = QString("%1% available power").arg(percentage);
+
         number++;
     }
     return  number;
@@ -229,19 +215,22 @@ void MainWindow::get_power_list()
 {
     // chushihua
     pow_widget = new QWidget(scroll_area);
-    pow_widget->resize(230, 148-16-61);
+    pow_widget->resize(230, 151-16-5-61-2);
     scroll_area->setWidget(pow_widget);
 
     int j = 0;
-    int ht = pow_widget->height();
 //    int size = 2;
     int size = get_engine_dev_number();
     if(size==0)
         size = 1;
 
-    resize(230+1,88 + size*61);
-    scroll_area->resize(230, 88 + size*61-16-61);
-    scroll_area->move(1, 16);
+    int ht = 5 + 16 + 67 + size*61;
+    resize(230+1,88 + size*61 +2);
+    scroll_area->resize(230, ht - 61 - 21);
+    pow_widget->resize(230, ht - 61 - 21);
+
+    scroll_area->move(1, 5+16);
+    pow_widget->move(1, 5+16);
     ui->brightlb->move(ui->brightlb->pos().x(),88 + size*61 - 61);
     ui->healthlb->move(ui->healthlb->pos().x(),88 + size*61 - 61);
     ui->savelb->move(ui->savelb->pos().x(),88 + size*61 - 61);
@@ -250,13 +239,12 @@ void MainWindow::get_power_list()
     ui->savebtn->move(ui->savebtn->pos().x(),88 + size*61 - 61);
     ui->saveicon->move(ui->saveicon->pos().x(),88 + size*61 - 61 +6);
     ui->savetext->move(ui->savetext->pos().x(),88 + size*61 - 61 + 38);
-
     ui->healthicon->move(ui->healthtext->pos().x(),88 + size*61 - 61 +6);
     ui->healthtext->move(ui->healthtext->pos().x(),88 + size*61 - 61 + 38);
     ui->brighticon->move(ui->brighticon->pos().x(),88 + size*61 - 61 +6);
     ui->brighttext->move(ui->brighttext->pos().x(),88 + size*61 - 61 + 38);
 
-    pow_widget->resize(230, size*61);
+//    pow_widget->resize(230, ht - 61 - 21);
 
     size = ed->devices.size();
     for(int i = 0; i < size; i++)
@@ -266,10 +254,10 @@ void MainWindow::get_power_list()
         if(dv->m_dev.kind == UP_DEVICE_KIND_LINE_POWER)
             continue;
         QString icon_name = ed->engine_get_device_icon(dv);
-        icon_name = ":/22x22/status/" + icon_name + ".png";
+//        icon_name = ":/22x22/status/" + icon_name + ".png";
         qDebug()<<"sdfdfsd-----"<<icon_name;
 //        double percentage = dv->m_dev.Percentage;
-        QString percentage = QString::number(dv->m_dev.Percentage, 'f', 1)+"%";
+        QString percentage = QString::number(dv->m_dev.Percentage, 'f',0)+"%";
         bool is_charging = false;
         QString text;
         if(icon_name.contains("charging"))
@@ -287,22 +275,21 @@ void MainWindow::get_power_list()
 
         QString state_text = ed->engine_get_state_text(dv->m_dev.State);
 
-
-
+        QString predict = ed->engine_get_device_predict(dv);
 
         DeviceWidget *dw= new DeviceWidget(pow_widget);
         device_items.append(dw);
         dw->setIcon(icon_name);
         dw->setPercent(percentage);
         dw->setState(state_text);
-        dw->setRemain("3 hours");
-        dw->move(0, 0 + j * 60);
+        dw->setRemain(predict);
+        dw->move(0, 3 + j * 61);
         dw->show();
 //        ht += pow_widget->height() + 60;
         j++;
     }
 
-    pow_widget->show();
+//    pow_widget->show();
 }
 void MainWindow::iconThemeChanged()
 {
@@ -393,5 +380,5 @@ void MainWindow::on_brightbtn_pressed()
 void MainWindow::on_brightbtn_released()
 {
 //    ui->brightlb->setStyleSheet(releaseQss);
-
+//    system()
 }
