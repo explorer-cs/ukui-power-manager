@@ -14,7 +14,7 @@
 #define GPM_DESCRIPTION 		_("Power Manager for the MATE desktop")
 
 /* schema location */
-#define GPM_SETTINGS_SCHEMA				"org.ukui.power-manager"
+#define GPM_SETTINGS_SCHEMA		"org.ukui.power-manager"
 #define GPM_SETTINGS_KEY_POLICY         "icon-policy"
 
 /* actions */

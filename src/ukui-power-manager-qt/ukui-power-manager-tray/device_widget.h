@@ -19,6 +19,13 @@ public:
     void setState(QString state);
     void setPercent(QString perct);
     void setIcon(QString name);
+    QString icon_name;
+    QString state_text;
+    QString percentage;
+    QString predict;
+
+public Q_SLOTS:
+    void widget_property_change();
 protected:
     void mouseReleaseEvent(QMouseEvent *event);
 private:

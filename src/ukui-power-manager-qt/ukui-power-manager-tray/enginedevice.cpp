@@ -84,8 +84,8 @@ void EngineDevice::engine_policy_settings_cb()
 
 void EngineDevice::power_device_add(QDBusMessage msg)
 {
-    UpDeviceState state;
-    UpDeviceKind kind;
+//    UpDeviceState state;
+//    UpDeviceKind kind;
 
     /* assign warning */
     /* check capacity */
@@ -433,16 +433,17 @@ QString EngineDevice::power_device_get_icon()
  **/
 QString EngineDevice::power_device_get_icon_exact (UpDeviceKind device_kind, UpDeviceLevel warning, bool use_state)
 {
-    uint i;
+//    uint i;
     DEVICE *device;
     UpDeviceLevel warning_temp;
-    UpDeviceKind kind;
+//    UpDeviceKind kind;
     UpDeviceState state;
-    bool is_present;
+//    bool is_present;
     /* do we have specific device types? */
     Q_FOREACH (device, devices) {
 
         state = device->m_dev.State;
+        warning_temp = device->m_dev.warnlevel;
         if ((device->m_dev.kind == device_kind) && (device->m_dev.IsPresent)) {
             if (warning != UP_DEVICE_LEVEL_NONE) {
                 if (warning_temp == warning) {
@@ -512,7 +513,7 @@ QString EngineDevice::engine_get_summary ()
             continue;
         part = engine_get_device_summary (device);
         if (!part.isNull())
-            tooltip = QString("%1\n").arg(part);
+            tooltip = QString("%1").arg(part);
     }
     return tooltip;
 }
@@ -523,7 +524,7 @@ QString EngineDevice::engine_get_summary ()
  *
  * Return value: The time string, e.g. "2 hours 3 minutes"
  **/
-QString EngineDevice::gpm_get_timestring (uint time_secs)
+QString EngineDevice::gpm_get_timestring (int time_secs)
 {
     int  hours;
     int  minutes;
@@ -699,8 +700,8 @@ QString EngineDevice::engine_get_device_summary(DEVICE* dv)
 {
     QString kind_desc;
 //    QString description;
-    uint time_to_full_round;
-    uint time_to_empty_round;
+    int time_to_full_round;
+    int time_to_empty_round;
     QString time_to_full_str;
     QString time_to_empty_str;
     UpDeviceKind kind;
@@ -735,7 +736,7 @@ QString EngineDevice::engine_get_device_summary(DEVICE* dv)
 
     /* we care if we are on AC */
     if (kind == UP_DEVICE_KIND_PHONE) {
-        if (state == UP_DEVICE_STATE_CHARGING || !state == UP_DEVICE_STATE_DISCHARGING) {
+        if (state == UP_DEVICE_STATE_CHARGING || state != UP_DEVICE_STATE_DISCHARGING) {
 
             result = QString("%1 charging (%2%)").arg(kind_desc).arg(percentage);
             return result;

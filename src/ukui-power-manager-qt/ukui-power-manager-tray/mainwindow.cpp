@@ -30,6 +30,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ed,SIGNAL(engine_signal_charge_low(DEV)),this,SLOT(low_battery_notify(DEV)));
     connect(ed,SIGNAL(engine_signal_charge_critical(DEV)),this,SLOT(critical_battery_notify(DEV)));
     connect(ed,SIGNAL(engine_signal_charge_action(DEV)),this,SLOT(action_battery_notify(DEV)));
+    connect(ed,SIGNAL(engine_signal_discharge(DEV)),this,SLOT(discharge_notify(DEV)));
+    connect(ed,SIGNAL(engine_signal_fullycharge(DEV)),this,SLOT(full_charge_notify(DEV)));
 
     setObjectName("MainWindow");
     initUi();
@@ -58,8 +60,49 @@ void MainWindow::onSumChanged(QString str)
     qDebug()<<str;
 }
 
+void MainWindow::discharge_notify(DEV dev)
+{
+    Q_UNUSED(dev);
+    qDebug()<<"discharge_notify---------";
+    QDBusInterface iface("org.freedesktop.Notifications",
+                         "/org/freedesktop/Notifications",
+                         "org.freedesktop.Notifications",
+                         QDBusConnection::sessionBus());
+    QList<QVariant> args;
+    args<<(QCoreApplication::applicationName())
+    <<((unsigned int) 0)
+    <<QString("qweq")
+    <<tr("discharge notify notification")
+    <<tr("battery is discharging!")
+    <<QStringList()
+    <<QVariantMap()
+    <<(int)-1;
+    iface.callWithArgumentList(QDBus::AutoDetect,"Notify",args);
+}
+
+void MainWindow::full_charge_notify(DEV dev)
+{
+    Q_UNUSED(dev);
+    qDebug()<<"full_charge_notify---------";
+    QDBusInterface iface("org.freedesktop.Notifications",
+                         "/org/freedesktop/Notifications",
+                         "org.freedesktop.Notifications",
+                         QDBusConnection::sessionBus());
+    QList<QVariant> args;
+    args<<(QCoreApplication::applicationName())
+    <<((unsigned int) 0)
+    <<QString("qweq")
+    <<tr("fullly charged notification")
+    <<tr("battery is fullly charged!")
+    <<QStringList()
+    <<QVariantMap()
+    <<(int)-1;
+    iface.callWithArgumentList(QDBus::AutoDetect,"Notify",args);
+}
+
 void MainWindow::low_battery_notify(DEV dev)
 {
+    Q_UNUSED(dev);
     qDebug()<<"low battery notify---------";
     QDBusInterface iface("org.freedesktop.Notifications",
                          "/org/freedesktop/Notifications",
@@ -79,6 +122,7 @@ void MainWindow::low_battery_notify(DEV dev)
 
 void MainWindow::critical_battery_notify(DEV dev)
 {
+    Q_UNUSED(dev);
     qDebug()<<"critical battery notify---------";
     QDBusInterface iface("org.freedesktop.Notifications",
                          "/org/freedesktop/Notifications",
@@ -98,6 +142,8 @@ void MainWindow::critical_battery_notify(DEV dev)
 
 void MainWindow::action_battery_notify(DEV dev)
 {
+    Q_UNUSED(dev);
+
     qDebug()<<"critical battery notify---------";
     QDBusInterface iface("org.freedesktop.Notifications",
                          "/org/freedesktop/Notifications",
@@ -138,7 +184,7 @@ void MainWindow::show_percentage_func()
 void MainWindow::onActivatedIcon(QSystemTrayIcon::ActivationReason reason)
 {
     get_power_list();
-    QRect rect;
+//    QRect rect;
     switch (reason) {
     case QSystemTrayIcon::Trigger:{
 
@@ -275,6 +321,8 @@ int MainWindow::get_engine_dev_number()
 void MainWindow::get_power_list()
 {
     // chushihua
+    if(pow_widget != NULL)
+        delete pow_widget;
     pow_widget = new QWidget(scroll_area);
     pow_widget->resize(230, 151-16-5-61-2);
     scroll_area->setWidget(pow_widget);
@@ -326,7 +374,7 @@ void MainWindow::get_power_list()
         /* generate the label */
         if (is_charging)
         {
-            //                text = QString("%1% available power\n(The power is connected and is charging)").arg(percentage);
+            //text = QString("%1% available power\n(The power is connected and is charging)").arg(percentage);
             text = QString("%1% available power").arg(percentage);
             text.append("\n");
             text.append("(The power is connected and is charging)");
@@ -339,7 +387,14 @@ void MainWindow::get_power_list()
         QString predict = ed->engine_get_device_predict(dv);
 
         DeviceWidget *dw= new DeviceWidget(pow_widget);
-        device_items.append(dw);
+//        device_items.append(dw);
+        connect(dv,&DEVICE::device_property_changed,[=]{
+            dw->icon_name = ed->engine_get_device_icon(dv);
+            dw->percentage = QString::number(dv->m_dev.Percentage, 'f',0)+"%";
+            dw->state_text = ed->engine_get_state_text(dv->m_dev.State);
+            dw->predict = ed->engine_get_device_predict(dv);
+            dw->widget_property_change();
+        });
         dw->setIcon(icon_name);
         dw->setPercent(percentage);
         dw->setState(state_text);

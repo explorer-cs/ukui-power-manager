@@ -96,7 +96,7 @@ public:
     void putAttributes(QMap<QString, QVariant> &map, DEV &btrDetailData);
     QString engine_get_state_text(UpDeviceState state);
     QString engine_get_device_predict(DEVICE *dv);
-    QString gpm_get_timestring(uint time_secs);
+    QString gpm_get_timestring(int time_secs);
 };
 
 #endif // ENGINEDEVICE_H

@@ -41,7 +41,15 @@ void DeviceWidget::setRemain(QString remain)
 
 void DeviceWidget::mouseReleaseEvent(QMouseEvent *event)
 {
+    Q_UNUSED(event);
     QString cmd = "ukui-power-statistics-qt &";
     system(cmd.toStdString().c_str());
 }
 
+void DeviceWidget::widget_property_change()
+{
+    setIcon(icon_name);
+    setPercent(percentage);
+    setState(state_text);
+    setRemain(predict);
+}

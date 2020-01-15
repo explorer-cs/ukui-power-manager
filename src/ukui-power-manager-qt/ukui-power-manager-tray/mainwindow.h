@@ -41,6 +41,8 @@ public Q_SLOTS:
     void low_battery_notify(DEV dev);
     void critical_battery_notify(DEV dev);
     void action_battery_notify(DEV dev);
+    void discharge_notify(DEV dev);
+    void full_charge_notify(DEV dev);
 private:
 //    QGSettings *setting;
 //    PowerDispWidget *dispWidget;
