@@ -48,23 +48,38 @@ void EngineDevice::power_device_get_devices()
 
 EngineDevice::EngineDevice(QObject *parent) : QObject(parent)
 {
+    icon_policy = GPM_ICON_POLICY_PRESENT;
+
     power_device_get_devices();
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
                                          QString("device-added"),this,SLOT(power_device_add(QDBusMessage)));
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_SERVICE,
                                          QString("device-removed"),this,SLOT(power_device_remove(QDBusMessage)));
     settings = new QGSettings(GPM_SETTINGS_SCHEMA);
-    icon_policy = GPM_ICON_POLICY_PRESENT;
-
     engine_policy_settings_cb();
+
     connect(settings,SIGNAL(changed(const QString&)),this,SLOT(engine_policy_settings_cb()));
 }
 
 void EngineDevice::engine_policy_settings_cb()
 {
     qDebug()<<"policy setting changed";
-//    QVariant var =settings->get(GPM_SETTINGS_KEY_POLICY);
-//    icon_policy = (GpmIconPolicy)var.value<int>();
+    QVariant var =settings->get(GPM_SETTINGS_KEY_POLICY);
+    QString icon_policy_str = var.value<QString>();
+    if(icon_policy_str == "always")
+        icon_policy = GPM_ICON_POLICY_ALWAYS;
+    else if(icon_policy_str == "present")
+        icon_policy = GPM_ICON_POLICY_PRESENT;
+    else if(icon_policy_str == "charge")
+        icon_policy = GPM_ICON_POLICY_CHARGE;
+    else if(icon_policy_str == "low")
+        icon_policy = GPM_ICON_POLICY_LOW;
+    else if(icon_policy_str == "critical")
+        icon_policy = GPM_ICON_POLICY_CRITICAL;
+    else if(icon_policy_str == "never")
+        icon_policy = GPM_ICON_POLICY_NEVER;
+
+    qDebug()<<icon_policy;
 }
 
 void EngineDevice::power_device_add(QDBusMessage msg)
@@ -217,6 +232,7 @@ void EngineDevice::power_device_change_callback(QDBusMessage msg,QString path)
 {
     /* if battery change to display devices */
     /* judge state */
+
     qDebug()<<"change callback-------";
     DEVICE *item = nullptr;
     Q_FOREACH (item, devices)
@@ -263,7 +279,12 @@ void EngineDevice::power_device_change_callback(QDBusMessage msg,QString path)
         }
         //save new warning;
     }
-
+//    static int con = -1;
+//    if(con == -1)
+//    {
+//        Q_EMIT engine_signal_charge_low(tmp_dev);
+//        con = 1;
+//    }
     /*recaculate state*/
     power_device_recalculate_state();
 }
@@ -315,7 +336,6 @@ QString EngineDevice::power_device_get_icon()
 {
     QString icon;
 
-//    icon_policy = GPM_ICON_POLICY_ALWAYS;
     /* GPM_ICON_POLICY_NEVER */
     if (icon_policy == GPM_ICON_POLICY_NEVER) {
         return QString();

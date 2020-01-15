@@ -7,8 +7,6 @@
 #include <QString>
 #include <QGSettings>
 
-//#define GPM_SETTINGS_SCHEMA "org.mate.power-manager"
-#define GPM_SETTINGS_KEY_POLICY "icon-policy"
 
 #define DBUS_SERVICE "org.freedesktop.UPower"
 #define DBUS_OBJECT "/org/freedesktop/UPower"

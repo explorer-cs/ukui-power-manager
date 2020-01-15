@@ -6,6 +6,7 @@
 #include <QScreen>
 #include <QProcess>
 #include "ui_mainwindow.h"
+#include <QDBusInterface>
 
 #define POWER_SCHEMA "org.ukui.power-manager"
 #define POWER_SCHEMA_KEY "power-manager"
@@ -26,6 +27,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(trayIcon,SIGNAL(activated(QSystemTrayIcon::ActivationReason)),this,SLOT(onActivatedIcon(QSystemTrayIcon::ActivationReason)));
     connect(ed,SIGNAL(icon_changed(QString)),this,SLOT(onIconChanged(QString)));
     connect(ed,SIGNAL(engine_signal_summary_change(QString)),this,SLOT(onSumChanged(QString)));
+    connect(ed,SIGNAL(engine_signal_charge_low(DEV)),this,SLOT(low_battery_notify(DEV)));
+    connect(ed,SIGNAL(engine_signal_charge_critical(DEV)),this,SLOT(critical_battery_notify(DEV)));
+    connect(ed,SIGNAL(engine_signal_charge_action(DEV)),this,SLOT(action_battery_notify(DEV)));
 
     setObjectName("MainWindow");
     initUi();
@@ -52,6 +56,63 @@ void MainWindow::onSumChanged(QString str)
 {
     trayIcon->setToolTip(str);
     qDebug()<<str;
+}
+
+void MainWindow::low_battery_notify(DEV dev)
+{
+    qDebug()<<"low battery notify---------";
+    QDBusInterface iface("org.freedesktop.Notifications",
+                         "/org/freedesktop/Notifications",
+                         "org.freedesktop.Notifications",
+                         QDBusConnection::sessionBus());
+    QList<QVariant> args;
+    args<<(QCoreApplication::applicationName())
+    <<((unsigned int) 0)
+    <<QString("qweq")
+    <<tr("low battery notification")
+    <<tr("battery is low,please plug in!")
+    <<QStringList()
+    <<QVariantMap()
+    <<(int)-1;
+    iface.callWithArgumentList(QDBus::AutoDetect,"Notify",args);
+}
+
+void MainWindow::critical_battery_notify(DEV dev)
+{
+    qDebug()<<"critical battery notify---------";
+    QDBusInterface iface("org.freedesktop.Notifications",
+                         "/org/freedesktop/Notifications",
+                         "org.freedesktop.Notifications",
+                         QDBusConnection::sessionBus());
+    QList<QVariant> args;
+    args<<(QCoreApplication::applicationName())
+    <<((unsigned int) 0)
+    <<QString("qweq")
+    <<tr("critical battery notification")
+    <<tr("battery is critical low,please plug in!")
+    <<QStringList()
+    <<QVariantMap()
+    <<(int)-1;
+    iface.callWithArgumentList(QDBus::AutoDetect,"Notify",args);
+}
+
+void MainWindow::action_battery_notify(DEV dev)
+{
+    qDebug()<<"critical battery notify---------";
+    QDBusInterface iface("org.freedesktop.Notifications",
+                         "/org/freedesktop/Notifications",
+                         "org.freedesktop.Notifications",
+                         QDBusConnection::sessionBus());
+    QList<QVariant> args;
+    args<<(QCoreApplication::applicationName())
+    <<((unsigned int) 0)
+    <<QString("qweq")
+    <<tr("very low battery notification")
+    <<tr("battery is very low,please plug in!")
+    <<QStringList()
+    <<QVariantMap()
+    <<(int)-1;
+    iface.callWithArgumentList(QDBus::AutoDetect,"Notify",args);
 }
 
 void MainWindow::onIconChanged(QString str)

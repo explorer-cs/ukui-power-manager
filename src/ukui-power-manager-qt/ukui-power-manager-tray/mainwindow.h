@@ -38,6 +38,9 @@ public Q_SLOTS:
     void show_percentage_func();
     void onIconChanged(QString str);
     void onSumChanged(QString str);
+    void low_battery_notify(DEV dev);
+    void critical_battery_notify(DEV dev);
+    void action_battery_notify(DEV dev);
 private:
 //    QGSettings *setting;
 //    PowerDispWidget *dispWidget;
