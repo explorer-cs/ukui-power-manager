@@ -64,5 +64,11 @@
         <file>main.qss</file>
         <file>en.qm</file>
         <file>zh_CN.qm</file>
+        <file>22x22/apps/bright.png</file>
+        <file>22x22/apps/health.png</file>
+        <file>22x22/apps/save.png</file>
+        <file>22x22/apps/setting.svg</file>
+        <file>22x22/apps/tick.png</file>
+        <file>22x22/apps/tick.svg</file>
     </qresource>
 </RCC>

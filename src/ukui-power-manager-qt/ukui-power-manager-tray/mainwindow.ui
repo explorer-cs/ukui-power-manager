@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>231</width>
-    <height>151</height>
+    <width>315</width>
+    <height>220</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,10 +17,10 @@
    <widget class="QPushButton" name="healthbtn">
     <property name="geometry">
      <rect>
-      <x>74</x>
-      <y>88</y>
-      <width>71</width>
-      <height>61</height>
+      <x>92</x>
+      <y>154</y>
+      <width>84</width>
+      <height>64</height>
      </rect>
     </property>
     <property name="text">
@@ -30,10 +30,10 @@
    <widget class="QLabel" name="brighticon">
     <property name="geometry">
      <rect>
-      <x>162</x>
-      <y>95</y>
-      <width>21</width>
-      <height>21</height>
+      <x>234</x>
+      <y>160</y>
+      <width>22</width>
+      <height>22</height>
      </rect>
     </property>
     <property name="text">
@@ -43,10 +43,10 @@
    <widget class="QPushButton" name="brightbtn">
     <property name="geometry">
      <rect>
-      <x>159</x>
-      <y>88</y>
-      <width>71</width>
-      <height>61</height>
+      <x>228</x>
+      <y>154</y>
+      <width>84</width>
+      <height>64</height>
      </rect>
     </property>
     <property name="text">
@@ -56,10 +56,10 @@
    <widget class="QLabel" name="power_title">
     <property name="geometry">
      <rect>
-      <x>5</x>
-      <y>5</y>
-      <width>181</width>
-      <height>16</height>
+      <x>18</x>
+      <y>22</y>
+      <width>121</width>
+      <height>23</height>
      </rect>
     </property>
     <property name="text">
@@ -69,10 +69,10 @@
    <widget class="QLabel" name="healthicon">
     <property name="geometry">
      <rect>
-      <x>75</x>
-      <y>97</y>
-      <width>21</width>
-      <height>21</height>
+      <x>97</x>
+      <y>158</y>
+      <width>22</width>
+      <height>22</height>
      </rect>
     </property>
     <property name="text">
@@ -82,10 +82,10 @@
    <widget class="QPushButton" name="savebtn">
     <property name="geometry">
      <rect>
-      <x>2</x>
-      <y>88</y>
-      <width>71</width>
-      <height>61</height>
+      <x>4</x>
+      <y>154</y>
+      <width>84</width>
+      <height>64</height>
      </rect>
     </property>
     <property name="text">
@@ -95,10 +95,10 @@
    <widget class="QLabel" name="healthtext">
     <property name="geometry">
      <rect>
-      <x>78</x>
-      <y>123</y>
-      <width>58</width>
-      <height>21</height>
+      <x>98</x>
+      <y>195</y>
+      <width>54</width>
+      <height>15</height>
      </rect>
     </property>
     <property name="text">
@@ -108,10 +108,10 @@
    <widget class="QLabel" name="saveicon">
     <property name="geometry">
      <rect>
-      <x>4</x>
-      <y>94</y>
-      <width>21</width>
-      <height>21</height>
+      <x>10</x>
+      <y>158</y>
+      <width>22</width>
+      <height>22</height>
      </rect>
     </property>
     <property name="text">
@@ -121,10 +121,10 @@
    <widget class="QLabel" name="brighttext">
     <property name="geometry">
      <rect>
-      <x>160</x>
-      <y>125</y>
-      <width>51</width>
-      <height>21</height>
+      <x>233</x>
+      <y>196</y>
+      <width>28</width>
+      <height>14</height>
      </rect>
     </property>
     <property name="text">
@@ -134,10 +134,10 @@
    <widget class="QLabel" name="savelb">
     <property name="geometry">
      <rect>
-      <x>2</x>
-      <y>88</y>
-      <width>71</width>
-      <height>61</height>
+      <x>4</x>
+      <y>154</y>
+      <width>84</width>
+      <height>64</height>
      </rect>
     </property>
     <property name="text">
@@ -147,10 +147,10 @@
    <widget class="QLabel" name="healthlb">
     <property name="geometry">
      <rect>
-      <x>74</x>
-      <y>88</y>
-      <width>71</width>
-      <height>61</height>
+      <x>92</x>
+      <y>154</y>
+      <width>84</width>
+      <height>64</height>
      </rect>
     </property>
     <property name="text">
@@ -163,10 +163,10 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>159</x>
-      <y>88</y>
-      <width>71</width>
-      <height>61</height>
+      <x>228</x>
+      <y>154</y>
+      <width>84</width>
+      <height>64</height>
      </rect>
     </property>
     <property name="text">
@@ -176,10 +176,10 @@
    <widget class="QLabel" name="savetext">
     <property name="geometry">
      <rect>
-      <x>4</x>
-      <y>126</y>
-      <width>51</width>
-      <height>21</height>
+      <x>9</x>
+      <y>196</y>
+      <width>56</width>
+      <height>14</height>
      </rect>
     </property>
     <property name="text">
@@ -192,13 +192,13 @@
    <zorder>healthtext</zorder>
    <zorder>brightlb</zorder>
    <zorder>healthbtn</zorder>
-   <zorder>brighticon</zorder>
    <zorder>power_title</zorder>
-   <zorder>healthicon</zorder>
    <zorder>savebtn</zorder>
-   <zorder>saveicon</zorder>
    <zorder>brighttext</zorder>
    <zorder>brightbtn</zorder>
+   <zorder>brighticon</zorder>
+   <zorder>healthicon</zorder>
+   <zorder>saveicon</zorder>
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>

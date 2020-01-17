@@ -28,6 +28,9 @@ public Q_SLOTS:
     void widget_property_change();
 protected:
     void mouseReleaseEvent(QMouseEvent *event);
+    void paintEvent(QPaintEvent *event);
+    void enterEvent(QEvent *event);
+    void leaveEvent(QEvent *event);
 private:
     Ui::DeviceWidget *ui;
 };

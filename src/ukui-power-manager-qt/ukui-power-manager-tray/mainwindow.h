@@ -54,6 +54,7 @@ private:
     QMenu *menu;
     QAction *set_preference;
     QAction *show_percentage;
+    QAction *set_bright;
     QScrollArea *scroll_area;
     Ui::MainWindow *ui;
     QWidget *pow_widget;
