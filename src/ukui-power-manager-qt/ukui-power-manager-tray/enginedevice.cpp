@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/&gt;.
+ *
+ */
 #include "enginedevice.h"
 #include "device.h"
 #include <QDBusObjectPath>
@@ -84,8 +101,6 @@ void EngineDevice::engine_policy_settings_cb()
 
 void EngineDevice::power_device_add(QDBusMessage msg)
 {
-//    UpDeviceState state;
-//    UpDeviceKind kind;
 
     /* assign warning */
     /* check capacity */
@@ -433,12 +448,9 @@ QString EngineDevice::power_device_get_icon()
  **/
 QString EngineDevice::power_device_get_icon_exact (UpDeviceKind device_kind, UpDeviceLevel warning, bool use_state)
 {
-//    uint i;
     DEVICE *device;
     UpDeviceLevel warning_temp;
-//    UpDeviceKind kind;
     UpDeviceState state;
-//    bool is_present;
     /* do we have specific device types? */
     Q_FOREACH (device, devices) {
 
@@ -474,14 +486,12 @@ bool EngineDevice::engine_recalculate_summary ()
     summary = engine_get_summary ();
     if (previous_summary.isNull()) {
         previous_summary = summary;
-//        printf ("** EMIT: summary-changed(1): %s\n", summary);
         Q_EMIT engine_signal_summary_change(summary);
         return true;
     }
 
     if (previous_summary != summary) {
         previous_summary = summary;
-//        printf ("** EMIT: summary-changed(2): %s\n", summary);
         Q_EMIT engine_signal_summary_change(summary);
         return true;
     }
@@ -545,7 +555,6 @@ QString EngineDevice::gpm_get_timestring (int time_secs)
             minute_str = tr("minute");
         else
             minute_str=tr("minutes");
-//        tmp = tr("%1 %2");
         result=QString("%1 %2").arg(minutes).arg(minute_str);
         return result;
     }
@@ -618,17 +627,6 @@ QString EngineDevice::engine_get_device_predict(DEVICE* dv)
         return result;
     }
 
-    /* we care if we are on AC */
-//    if (kind == UP_DEVICE_KIND_PHONE) {
-//        if (state == UP_DEVICE_STATE_CHARGING || !state == UP_DEVICE_STATE_DISCHARGING) {
-
-//            result = QString("%1 charging (%2%)").arg(kind_desc).arg(percentage);
-//            return result;
-//        }
-//        result = QString("%1 (%2%)").arg(kind_desc).arg(percentage);
-
-//        return result;
-//    }
 
     time_to_full_round = precision_round_down (time_to_full, GPM_UP_TIME_PRECISION);
     time_to_empty_round = precision_round_down (time_to_empty, GPM_UP_TIME_PRECISION);
@@ -637,7 +635,6 @@ QString EngineDevice::engine_get_device_predict(DEVICE* dv)
 
         if (kind == UP_DEVICE_KIND_BATTERY && time_to_empty_round > GPM_UP_TEXT_MIN_TIME) {
             time_to_empty_str = gpm_get_timestring (time_to_empty_round);
-//            result = QString("Battery is fully charged.\nProvides %1 laptop runtime").arg(time_to_empty_str);
             result = time_to_empty_str;
 
         } else {
@@ -648,7 +645,6 @@ QString EngineDevice::engine_get_device_predict(DEVICE* dv)
 
         if (time_to_empty_round > GPM_UP_TEXT_MIN_TIME) {
             time_to_empty_str = gpm_get_timestring (time_to_empty_round);
-//            result = QString("%1 %2 remaining (%3%)").arg(kind_desc).arg(time_to_empty_str).arg(percentage);
             result = time_to_empty_str;
 
         } else {
@@ -666,8 +662,6 @@ QString EngineDevice::engine_get_device_predict(DEVICE* dv)
             time_to_empty_str = gpm_get_timestring (time_to_empty_round);
 
             /* TRANSLATORS: the device is charging, and we have a time to full and empty */
-//            result = QString("%1 %2 until charged (%3%)\nProvides %4 battery runtime")
-//                    .arg(kind_desc).arg(time_to_full_str).arg(percentage).arg(time_to_empty_str);
             result = time_to_full_str;
         } else if (time_to_full_round > GPM_UP_TEXT_MIN_TIME) {
 
@@ -675,7 +669,6 @@ QString EngineDevice::engine_get_device_predict(DEVICE* dv)
             time_to_full_str = gpm_get_timestring (time_to_full_round);
 
             /* TRANSLATORS: device is charging, and we have a time to full and a percentage */
-//            result = QString("%1 %2 until charged (%3%)").arg(kind_desc).arg(time_to_full_str).arg(percentage);
             result = time_to_full_str;
 
         } else {
@@ -699,7 +692,6 @@ QString EngineDevice::engine_get_device_predict(DEVICE* dv)
 QString EngineDevice::engine_get_device_summary(DEVICE* dv)
 {
     QString kind_desc;
-//    QString description;
     int time_to_full_round;
     int time_to_empty_round;
     QString time_to_full_str;
@@ -717,7 +709,6 @@ QString EngineDevice::engine_get_device_summary(DEVICE* dv)
     is_present = dv->m_dev.IsPresent;
     state = dv->m_dev.State;
     percentage = dv->m_dev.Percentage;
-//    percentage = ( (float)( (int)( (percentage + 0.05) * 10 ) ) ) / 10;
 
     time_to_empty = dv->m_dev.TimeToEmpty;
     time_to_full = dv->m_dev.TimeToFull;

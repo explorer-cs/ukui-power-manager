@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/&gt;.
+ *
+ */
 #include "powerpolicy.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,8 +37,6 @@
 
 PowerPolicy::PowerPolicy(QObject *parent) : QObject(parent)
 {
-//    settings = new QGSettings(POWER_SETTINGS_SCHEMA);
-//    mode = settings->getInt(POWERPOLICY_MODE_TEXT);
 
     connect(this,SIGNAL(onbattery_change(bool)),this,SLOT(onbattery_change_slot(bool)));
     QDBusConnection::systemBus().connect(DBUS_SERVICE,DBUS_OBJECT,DBUS_INTERFACE,
@@ -31,8 +46,6 @@ PowerPolicy::PowerPolicy(QObject *parent) : QObject(parent)
     QDBusMessage res = QDBusConnection::systemBus().call(msg);
     if(res.type()==QDBusMessage::ReplyMessage)
     {
-//        const QDBusArgument& arg = res.arguments().at(0).value<QDBusArgument>();
-//        arg>>onbattery;
         onbattery = res.arguments().takeFirst().toBool();
     }
 }
@@ -53,25 +66,7 @@ void PowerPolicy::onPropertiesSlot(QDBusMessage msg)
 
 void PowerPolicy::onbattery_change_slot(bool flag)
 {
-    /**change mode**/
-//    if(flag)
-//    {
-//        qDebug()<<"power on battery";
-//        mode = SAVEPOWER;
-//        settings->setInt(POWERPOLICY_MODE_TEXT,mode);
-//        QString cmd;
-//        cmd.sprintf("/usr/bin/bat_power_policy.sh %d",mode);//exec bat in save
-//    }
-//    else
-//    {
-//        qDebug()<<"power on ac";
-//        mode = PERFORMANCE;
-//        settings->setInt(POWERPOLICY_MODE_TEXT,mode);
-//        QString cmd;
-//        cmd.sprintf("/usr/bin/ac_power_policy.sh %d",mode);//exec ac in performance
-//    }
-    /**not change mode**/
-    //   control(mode);
+
     if(flag)
         process(SAVEPOWER);//from ac to battery
     else {
@@ -149,7 +144,6 @@ int PowerPolicy::power_control(QString power_status, QString power_mode)
         mode = SAVEPOWER;
     else if(power_mode == ("performance"))
         mode = PERFORMANCE;
-//    settings->setInt(POWERPOLICY_MODE_TEXT,mode);
     QString cmd;
     cmd = QString("/usr/bin/power_policy.sh") + " " + power_status + " " + power_mode;
     int rv = system(cmd.toStdString().c_str());
@@ -158,7 +152,6 @@ int PowerPolicy::power_control(QString power_status, QString power_mode)
          printf("subprocess exited, exit code: %d\n", WEXITSTATUS(rv));
          if (0 == WEXITSTATUS(rv))
          {
-              // if command returning 0 means succeed
               printf("command succeed");
               ret.sprintf("command succeed");
               return 0;
@@ -233,15 +226,10 @@ int PowerPolicy::process(int option)
     if(option==0)
     {
         power_mode = "PERFORMANCE";
-//        settings->setInt(POWERPOLICY_MODE_TEXT,0);//present 2 mode;
     }
     else {
         power_mode = "POWERSAVE";
-//        settings->setInt(POWERPOLICY_MODE_TEXT,2);
     }
-//      settings->setInt(POWERPOLICY_MODE_TEXT,option);
-//      QString cmd;
-//      cmd.sprintf("/usr/bin/power_policy.sh %d",option);
     QString cmd;
     cmd = QString("/usr/bin/power_policy.sh") + " " + power_status + " " + power_mode;
     int rv = system(cmd.toStdString().c_str());
@@ -250,7 +238,6 @@ int PowerPolicy::process(int option)
          printf("subprocess exited, exit code: %d\n", WEXITSTATUS(rv));
          if (0 == WEXITSTATUS(rv))
          {
-              // if command returning 0 means succeed
               printf("command succeed");
               ret.sprintf("command succeed");
               return 0;
@@ -282,9 +269,7 @@ int PowerPolicy::process(int option)
 
 int PowerPolicy::script_process(QString cmd)
 {
-//    settings->setInt(POWERPOLICY_MODE_TEXT,mode);
-    //      QString cmd;
-    //      cmd.sprintf("/usr/bin/power_policy.sh %d",option);
+
     int rv = system(cmd.toStdString().c_str());
     if (WIFEXITED(rv))
     {

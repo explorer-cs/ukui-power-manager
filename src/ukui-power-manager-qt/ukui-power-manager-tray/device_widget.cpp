@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/&gt;.
+ *
+ */
 #include "device_widget.h"
 #include "ui_devicewidget.h"
 #include <QDebug>
@@ -9,7 +26,6 @@ DeviceWidget::DeviceWidget(QWidget *parent) :
     ui(new Ui::DeviceWidget)
 {
     ui->setupUi(this);
-//    ui->DeviceWi->setStyleSheet("#wbg{background-color:#3593b5;}");
     setAttribute(Qt::WA_StyledBackground,true);
 }
 
@@ -22,8 +38,6 @@ void DeviceWidget::setIcon(QString name)
 {
     QIcon icon = QIcon::fromTheme(name);
     qDebug()<<icon.name()<<"--------------------------------";
-//    QPixmap pix(icon.name());
-//    ui->devicon->setPixmap(pix);
     ui->btnicon->setIcon(icon);
 }
 
@@ -49,10 +63,7 @@ void DeviceWidget::mouseReleaseEvent(QMouseEvent *event)
 
     QString cmd = "ukui-power-statistics-qt &";
     system(cmd.toStdString().c_str());
-//    setStyleSheet(
-//                "background:rgba(61,107,229,1);"
-//                "border-radius:2px;"
-//    );
+
 }
 
 void DeviceWidget::widget_property_change()

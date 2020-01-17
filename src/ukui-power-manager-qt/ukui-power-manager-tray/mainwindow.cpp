@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/&gt;.
+ *
+ */
 #include "mainwindow.h"
 #include <QDebug>
 #include <QDesktopWidget>
@@ -24,7 +41,6 @@ MainWindow::MainWindow(QWidget *parent) :
 //    connect(setting,SIGNAL(changed(const QString &)),this,SLOT(iconThemeChanged()));
 
     trayIcon = new QSystemTrayIcon(this);
-//    trayIcon->setIcon(QIcon(":/22x22/status/gpm-battery-000-charging.png"));
     connect(trayIcon,SIGNAL(activated(QSystemTrayIcon::ActivationReason)),this,SLOT(onActivatedIcon(QSystemTrayIcon::ActivationReason)));
     connect(ed,SIGNAL(icon_changed(QString)),this,SLOT(onIconChanged(QString)));
     connect(ed,SIGNAL(engine_signal_summary_change(QString)),this,SLOT(onSumChanged(QString)));
@@ -269,24 +285,15 @@ void MainWindow::initUi()
     pow_widget = new QWidget(scroll_area);
 
 
-//    pressQss = "QLabel{background-color:#283138;}";
-//    releaseQss = "QLabel{background-color:#3593b5;}";
-
     ui->brightlb->setStyleSheet("QLabel{background-color:#283138;}");
     ui->savelb->setStyleSheet("QLabel{background-color:#283138;}");
     ui->healthlb->setStyleSheet("QLabel{background-color:#283138;}");
 
-//    ui->centralWidget->setStyleSheet("{border:1px solid #626c6e;background-color:#151a1e;}");
 
     ui->power_title->setText(tr("PowerManagement"));
-//    ui->power_title->setStyleSheet("{background-color:rgba(8,10,12,0.6);}");
 
     scroll_area->setStyleSheet("QScrollArea{border:none;}");
     scroll_area->viewport()->setStyleSheet("background-color:transparent;");
-
-
-//    pow_widget->setStyleSheet("{font-size:12px;color:white;border:1px solid rgba(255,255,255,0.1);background:transparent;background-color:rgba(0,0,0,0.2);}"
-//                                  "Pressed{border:1px solid rgba(255,255,255,0.5);background:transparent;background-color:rgba(255,255,255,0.1);}");
 
     ui->brightbtn->setStyleSheet("QPushButton{border:none;}");
     ui->brighttext->setStyleSheet("QLabel{font-size:13px;color:#ffffff;}");
@@ -366,7 +373,6 @@ void MainWindow::get_power_list()
     ui->brighticon->move(ui->brighticon->pos().x(),ht - 41 - 22);
     ui->brighttext->move(ui->brighttext->pos().x(),ht - 10 - 14);
 
-//    pow_widget->resize(230, ht - 61 - 21);
 
 #ifndef DEBUG
     size = ed->devices.size();
@@ -457,30 +463,6 @@ MainWindow::~MainWindow()
 {
 }
 
-//void MainWindow::create_actions()
-//{
-//    QMenu *help_menu = new QMenu;
-
-//    QAction *action_help = new QAction(this);
-
-//    QAction *action_quit = new QAction(this);
-
-//    QAction *action_about = new QAction(this);
-
-//    QAction *action_setting = new QAction(this);
-
-//    help_menu->setIcon(QIcon(":/22x22/status/gpm-ac-adapter.png"));
-//    action_quit->setIcon(QIcon(":/22x22/status/gpm-ac-adapter.png"));
-//    action_setting->setIcon(QIcon(":/22x22/status/gpm-ac-adapter.png"));
-//    action_about->setIcon(QIcon(":/22x22/status/gpm-ac-adapter.png"));
-
-//    this->addAction(action_help);
-//    this->addAction(action_quit);
-//    addAction(action_about);
-//    addAction(action_setting);
-
-
-//}
 
 void MainWindow::on_savebtn_pressed()
 {
