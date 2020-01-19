@@ -165,7 +165,7 @@ public:
         }
     }
 
-    void ukpm_update_info_data_page(DEV *device, gint page);
+    void ukpm_update_info_data_page(DEV *device, int page);
     void ukpm_update_info_page_stats(DEV *device);
     void ukpm_update_info_page_details(DEV *device);
     void ukpm_update_info_data(DEV *device);
@@ -176,7 +176,7 @@ public:
     void addListRow(QString attr, QString value);
     void setInfoUI();
     QList<QPointF> getHistory(QString type, uint timeSpan);
-    void ukpm_set_graph_data(QList<QPointF> list, gboolean use_smoothed, gboolean use_points);
+    void ukpm_set_graph_data(QList<QPointF> list, bool use_smoothed, bool use_points);
     QList<QPointF> getStatics(QString stat_type);
     void getProperty(QString path, DEV &dev);
     void setupUI();
@@ -231,7 +231,8 @@ public:
     QList<QDBusObjectPath> deviceNames;
     QList<DEVICE*> devices;
     QMap<QDBusObjectPath,QListWidgetItem*> listItem;
-    QMap<DEVICE*,QListWidgetItem*> dev_item;
+//    QMap<DEVICE*,QListWidgetItem*> dev_item;
+    QMap<QListWidgetItem*,DEVICE*> dev_item;
     QMap<QDBusObjectPath,QTabWidget*> widgetItem;
     QString batterySvr,acSvr;
     bool iconflag;

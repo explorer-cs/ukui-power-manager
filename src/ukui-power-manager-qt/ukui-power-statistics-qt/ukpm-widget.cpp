@@ -19,7 +19,6 @@
 #include "customtype.h"
 #include "sys/time.h"
 
-
 #define GPM_HISTORY_RATE_TEXT			"Rate"
 #define GPM_HISTORY_CHARGE_TEXT			"Charge"
 #define GPM_HISTORY_TIME_FULL_TEXT		"Time to full"
@@ -253,6 +252,7 @@ void UkpmWidget::getDevices()
                 label = vendor + " " + model;
             else
                 label =device_kind_to_localised_text((UpDeviceKind)kindEnum,1);
+
             if(kindEnum == UP_DEVICE_KIND_LINE_POWER || kindEnum == UP_DEVICE_KIND_BATTERY || kindEnum == UP_DEVICE_KIND_COMPUTER)
             {
                 item = new QListWidgetItem(QIcon(":/images/"+icon+".png"),label);
@@ -319,7 +319,8 @@ void UkpmWidget::getDevices()
             dev->m_dev->Voltage = QString::number(map.value(QString("Voltage")).toDouble(), 'f', 1) + " V";
 
             devices.push_back(dev);
-            dev_item.insert(dev,item);
+//            dev_item.insert(dev,item);
+            dev_item.insert(item,dev);
         }
     }
 //    if(!batterySvr.isEmpty())
@@ -1386,7 +1387,9 @@ QString UkpmWidget::getWidgetAxis(uint value)
 void UkpmWidget::onItemChanged(QListWidgetItem* cur,QListWidgetItem* pre)
 {
     Q_UNUSED(pre);
-    current_device = dev_item.key(cur)->m_dev;
+    auto iterator = dev_item.find(cur);
+    if(iterator != dev_item.end())
+        current_device = dev_item.value(cur)->m_dev;
 //    qDebug()<<"onItemChanged";
     ukpm_update_info_data(current_device);
 }
@@ -1698,6 +1701,11 @@ void UkpmWidget::deviceRemoved(QDBusMessage  msg)
     QMap<QDBusObjectPath,QListWidgetItem*>::iterator iter = listItem.find(objectPath);
     if(iter!= listItem.end())
     {
+        if(dev_item.contains(iter.value()))
+        {
+            auto dev_item_iter = dev_item.find(iter.value());
+            dev_item.erase(dev_item_iter);
+        }
         listWidget->removeItemWidget(iter.value());
         listItem.erase(iter);
         delete iter.value();
@@ -1736,7 +1744,11 @@ void UkpmWidget::setupUI()
     listWidget->setSpacing(10);
     tab_widget =  new QTabWidget(mainsplitter);
 
-    mainsplitter->setStretchFactor(1,4);
+    QList<int> list_src;
+    list_src.append(180);
+    list_src.append(680);
+    mainsplitter->setSizes(list_src);
+//    mainsplitter->setStretchFactor(1,4);
 //    mainsplitter->setFrameStyle();
     QVBoxLayout *vlayout = new QVBoxLayout;
     vlayout->setContentsMargins(5,0,40,0);

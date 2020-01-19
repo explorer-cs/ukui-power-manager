@@ -25,9 +25,13 @@ QTabWidget::pane { /* The tab widget frame */
       border-top: 1px solid #C2C7CB;
   }
 
-  /* Style the tab using the tab sub-control. Note that
-      it reads QTabBar _not_ QTabWidget */
-  QTabBar::tab {
+/* Style the tab using the tab sub-control. Note that
+  it reads QTabBar _not_ QTabWidget */
+QTabBar {
+  font:14px;
+}
+
+QTabBar::tab {
     border:none;
     border-bottom:1px;
     border-color:#C2C7CB;
@@ -36,7 +40,7 @@ QTabWidget::pane { /* The tab widget frame */
     font:14px;
     color:#666666;
     height:32px;
-  }
+}
 
 QTabBar::tab:selected { /* The tab widget frame */
       font: bold;
