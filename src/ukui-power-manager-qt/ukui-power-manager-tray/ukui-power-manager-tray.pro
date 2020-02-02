@@ -36,7 +36,8 @@ SOURCES += \
     customtype.cpp \
     device.cpp \
     engine-common.cpp \
-    enginedevice.cpp
+    enginedevice.cpp \
+    device_form.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -44,11 +45,13 @@ HEADERS += \
     customtype.h \
     device.h \
     engine-common.h \
-    enginedevice.h
+    enginedevice.h \
+    device_form.h
 
 FORMS += \
         mainwindow.ui \
-    devicewidget.ui
+    devicewidget.ui \
+    deviceform.ui
 
 # Default rules for deployment.
 

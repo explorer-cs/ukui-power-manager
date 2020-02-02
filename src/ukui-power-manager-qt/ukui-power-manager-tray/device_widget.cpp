@@ -37,7 +37,7 @@ DeviceWidget::~DeviceWidget()
 void DeviceWidget::setIcon(QString name)
 {
     QIcon icon = QIcon::fromTheme(name);
-    qDebug()<<icon.name()<<"--------------------------------";
+    qDebug()<<icon.name()<<"-----------this is device icon---------------------";
     ui->btnicon->setIcon(icon);
 }
 

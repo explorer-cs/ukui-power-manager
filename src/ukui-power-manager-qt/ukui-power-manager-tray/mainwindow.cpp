@@ -185,10 +185,12 @@ void MainWindow::action_battery_notify(DEV dev)
 
 void MainWindow::onIconChanged(QString str)
 {
-//    str = ":/22x22/status/"+str+".png";
-    QIcon icon = QIcon::fromTheme(str);
-    trayIcon->setIcon(icon);;
-//    qDebug()<<str;
+    //    qDebug()<<str;
+
+    str = ":/22x22/status/"+str+".png";
+    trayIcon->setIcon(QIcon(str));
+//    QIcon icon = QIcon::fromTheme(str);
+//    trayIcon->setIcon(icon);
 }
 
 void MainWindow::set_preference_func()
@@ -261,7 +263,6 @@ void MainWindow::initData()
     pressQss = "QLabel{background-color:#3593b5;}";
     releaseQss = "QLabel{background-color:#283138;}";
 }
-
 void MainWindow::initUi()
 {
     setWindowFlags(Qt::FramelessWindowHint|Qt::Popup);
@@ -314,6 +315,27 @@ void MainWindow::initUi()
 //    ui->brightlb->setParent(ui->brightbtn);
 //    ui->healthlb->setParent(ui->healthbtn);
 //    ui->savelb->setParent(ui->savebtn);
+}
+
+void MainWindow::initUi2()
+{
+    setWindowFlags(Qt::FramelessWindowHint|Qt::Popup);
+//    this->setWindowFlags(Qt::CustomizeWindowHint | Qt::FramelessWindowHint | Qt::SplashScreen);
+    setAttribute(Qt::WA_StyledBackground,true);
+//    setWindowFlags(Qt::FramelessWindowHint|Qt::Popup);
+    resize(315,220);
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    setWindowOpacity(0.95);
+
+
+
+
+
+    ui->power_title->setText(tr("PowerManagement"));
+
+
+    get_power_list();
+
 }
 
 int MainWindow::get_engine_dev_number()
