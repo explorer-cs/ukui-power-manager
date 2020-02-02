@@ -14,191 +14,31 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <widget class="QPushButton" name="healthbtn">
-    <property name="geometry">
-     <rect>
-      <x>92</x>
-      <y>154</y>
-      <width>84</width>
-      <height>64</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="brighticon">
-    <property name="geometry">
-     <rect>
-      <x>234</x>
-      <y>160</y>
-      <width>22</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="brightbtn">
-    <property name="geometry">
-     <rect>
-      <x>228</x>
-      <y>154</y>
-      <width>84</width>
-      <height>64</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="power_title">
-    <property name="geometry">
-     <rect>
-      <x>18</x>
-      <y>22</y>
-      <width>121</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="healthicon">
-    <property name="geometry">
-     <rect>
-      <x>97</x>
-      <y>158</y>
-      <width>22</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="savebtn">
-    <property name="geometry">
-     <rect>
-      <x>4</x>
-      <y>154</y>
-      <width>84</width>
-      <height>64</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="healthtext">
-    <property name="geometry">
-     <rect>
-      <x>98</x>
-      <y>195</y>
-      <width>54</width>
-      <height>15</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="saveicon">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>158</y>
-      <width>22</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="brighttext">
-    <property name="geometry">
-     <rect>
-      <x>233</x>
-      <y>196</y>
-      <width>28</width>
-      <height>14</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="savelb">
-    <property name="geometry">
-     <rect>
-      <x>4</x>
-      <y>154</y>
-      <width>84</width>
-      <height>64</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="healthlb">
-    <property name="geometry">
-     <rect>
-      <x>92</x>
-      <y>154</y>
-      <width>84</width>
-      <height>64</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="brightlb">
-    <property name="enabled">
-     <bool>true</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>228</x>
-      <y>154</y>
-      <width>84</width>
-      <height>64</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="savetext">
-    <property name="geometry">
-     <rect>
-      <x>9</x>
-      <y>196</y>
-      <width>56</width>
-      <height>14</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <zorder>healthlb</zorder>
-   <zorder>savelb</zorder>
-   <zorder>savetext</zorder>
-   <zorder>healthtext</zorder>
-   <zorder>brightlb</zorder>
-   <zorder>healthbtn</zorder>
-   <zorder>power_title</zorder>
-   <zorder>savebtn</zorder>
-   <zorder>brighttext</zorder>
-   <zorder>brightbtn</zorder>
-   <zorder>brighticon</zorder>
-   <zorder>healthicon</zorder>
-   <zorder>saveicon</zorder>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QVBoxLayout" name="vLayout">
+      <item>
+       <widget class="QLabel" name="powertitle">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>121</width>
+          <height>23</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>

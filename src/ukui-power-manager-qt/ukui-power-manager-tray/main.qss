@@ -20,7 +20,6 @@ QMenu::item:selected{
 
 
 QLabel {
-width:89px;
 height:15px;
 font-size:14px;
 font-family:Noto Sans CJK SC;

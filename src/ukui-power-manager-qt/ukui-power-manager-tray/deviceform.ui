@@ -6,32 +6,38 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>373</width>
-    <height>119</height>
+    <width>325</width>
+    <height>52</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QLabel" name="iconlabel">
+  <widget class="QLabel" name="icon">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>40</y>
-     <width>51</width>
-     <height>31</height>
+     <x>6</x>
+     <y>13</y>
+     <width>22</width>
+     <height>22</height>
     </rect>
    </property>
    <property name="text">
     <string>TextLabel</string>
    </property>
   </widget>
-  <widget class="QLabel" name="kindlabel">
+  <widget class="QLabel" name="state">
    <property name="geometry">
     <rect>
-     <x>80</x>
-     <y>30</y>
-     <width>81</width>
+     <x>37</x>
+     <y>6</y>
+     <width>91</width>
      <height>16</height>
     </rect>
    </property>
@@ -39,12 +45,28 @@
     <string>TextLabel</string>
    </property>
   </widget>
-  <widget class="QLabel" name="percentlabel">
+  <widget class="QLabel" name="percentage">
    <property name="geometry">
     <rect>
-     <x>300</x>
-     <y>30</y>
-     <width>81</width>
+     <x>135</x>
+     <y>5</y>
+     <width>141</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="remaintext">
+   <property name="geometry">
+    <rect>
+     <x>37</x>
+     <y>36</y>
+     <width>91</width>
      <height>16</height>
     </rect>
    </property>
@@ -52,43 +74,36 @@
     <string>TextLabel</string>
    </property>
   </widget>
-  <widget class="QLabel" name="timelabel">
+  <widget class="QLabel" name="remaindata">
    <property name="geometry">
     <rect>
-     <x>80</x>
-     <y>90</y>
-     <width>81</width>
-     <height>16</height>
+     <x>133</x>
+     <y>32</y>
+     <width>141</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
     <string>TextLabel</string>
    </property>
-  </widget>
-  <widget class="QLabel" name="remainlabel">
-   <property name="geometry">
-    <rect>
-     <x>300</x>
-     <y>90</y>
-     <width>81</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>TextLabel</string>
+   <property name="alignment">
+    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
    </property>
   </widget>
-  <widget class="QSlider" name="hSlider">
+  <widget class="QProgressBar" name="progressBar">
    <property name="geometry">
     <rect>
-     <x>80</x>
-     <y>60</y>
-     <width>271</width>
-     <height>16</height>
+     <x>40</x>
+     <y>25</y>
+     <width>241</width>
+     <height>6</height>
     </rect>
    </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
+   <property name="value">
+    <number>24</number>
+   </property>
+   <property name="textVisible">
+    <bool>false</bool>
    </property>
   </widget>
  </widget>

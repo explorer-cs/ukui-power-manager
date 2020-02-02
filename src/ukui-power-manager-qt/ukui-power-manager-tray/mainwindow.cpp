@@ -24,10 +24,11 @@
 #include <QProcess>
 #include "ui_mainwindow.h"
 #include <QDBusInterface>
+#include "device_form.h"
 
 #define POWER_SCHEMA "org.ukui.power-manager"
 #define POWER_SCHEMA_KEY "power-manager"
-//#define DEBUG
+#define DEBUG
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -51,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ed,SIGNAL(engine_signal_fullycharge(DEV)),this,SLOT(full_charge_notify(DEV)));
 
     setObjectName("MainWindow");
-    initUi();
+    initUi2();
     disp_control = true;
     menu = new QMenu(this);
     set_preference  = new QAction(menu);
@@ -263,6 +264,8 @@ void MainWindow::initData()
     pressQss = "QLabel{background-color:#3593b5;}";
     releaseQss = "QLabel{background-color:#283138;}";
 }
+
+#if 0
 void MainWindow::initUi()
 {
     setWindowFlags(Qt::FramelessWindowHint|Qt::Popup);
@@ -316,14 +319,14 @@ void MainWindow::initUi()
 //    ui->healthlb->setParent(ui->healthbtn);
 //    ui->savelb->setParent(ui->savebtn);
 }
-
+#endif
 void MainWindow::initUi2()
 {
     setWindowFlags(Qt::FramelessWindowHint|Qt::Popup);
 //    this->setWindowFlags(Qt::CustomizeWindowHint | Qt::FramelessWindowHint | Qt::SplashScreen);
     setAttribute(Qt::WA_StyledBackground,true);
 //    setWindowFlags(Qt::FramelessWindowHint|Qt::Popup);
-    resize(315,220);
+    resize(360,320);
     setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     setWindowOpacity(0.95);
 
@@ -331,7 +334,7 @@ void MainWindow::initUi2()
 
 
 
-    ui->power_title->setText(tr("PowerManagement"));
+    ui->powertitle->setText(tr("PowerManagement"));
 
 
     get_power_list();
@@ -357,6 +360,7 @@ int MainWindow::get_engine_dev_number()
 }
 void MainWindow::get_power_list()
 {
+#if 0
     // chushihua
     if(pow_widget != NULL)
         delete pow_widget;
@@ -382,7 +386,6 @@ void MainWindow::get_power_list()
     scroll_area->move(1, 50);
     pow_widget->move(1, 50);
     ui->brightlb->move(ui->brightlb->pos().x(),ht - 66);
-//    ui->healthlb->move(ui->healthlb->pos().x(),88 + size*61 - 61);
     ui->healthlb->move(ui->healthlb->pos().x(),ht - 66);
     ui->savelb->move(ui->savelb->pos().x(),ht - 66);
     ui->brightbtn->move(ui->brightbtn->pos().x(),ht - 66);
@@ -394,6 +397,7 @@ void MainWindow::get_power_list()
     ui->healthtext->move(ui->healthtext->pos().x(),ht - 10 - 15);
     ui->brighticon->move(ui->brighticon->pos().x(),ht - 41 - 22);
     ui->brighttext->move(ui->brighttext->pos().x(),ht - 10 - 14);
+#endif
 
 
 #ifndef DEBUG
@@ -442,24 +446,29 @@ void MainWindow::get_power_list()
         j++;
     }
 #else
+    int j = 0;
     for(int i = 0; i < 2; i++)
     {
         QString icon_name = "gpm-battery-080-charging.png";
         QString percentage = QString::number(92.0, 'f',0)+"%";
-
-
         QString state_text = "charging";
-
         QString predict = "1 hour 5 minutes";
-        DeviceWidget *dw= new DeviceWidget(pow_widget);
 
-        dw->setIcon(icon_name);
-        dw->setPercent(percentage);
-        dw->setState(state_text);
-        dw->setRemain(predict);
-        dw->move(0, 3 + j * 61);
-        dw->show();
-        j++;
+        DeviceForm *df= new DeviceForm(this);
+        df->setIcon(icon_name);
+        df->setPercent(percentage);
+        df->setState(state_text);
+        df->setRemain(predict);
+        df->show();
+        ui->vLayout->addWidget(df);
+
+//        DeviceWidget *dw= new DeviceWidget(this);
+//        dw->setIcon(icon_name);
+//        dw->setPercent(percentage);
+//        dw->setState(state_text);
+//        dw->setRemain(predict);
+//        dw->show();
+//        ui->vLayout->addWidget(dw);
     }
 #endif
 
@@ -489,32 +498,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_savebtn_pressed()
 {
     saving = !saving;
-//    if(saving)
-//    {
-//        ui->savelb->setStyleSheet(pressQss);
-//    }
-//    else {
-//        ui->savelb->setStyleSheet(releaseQss);
-//    }
-    if(saving)
-    {
-        ui->savelb->setStyleSheet(
-                    "width:84px;"
-                    "height:60px;"
-                    "background:rgba(61,107,229,1);"
-                    "border-radius:2px;"
 
-    );
-    }
-    else {
-        ui->savelb->setStyleSheet(
-                   " width:84px;"
-                    "height:60px;"
-                    "background:rgba(255,255,255,0.1);"
-                    "border-radius:2px;"
-
-    );
-    }
 }
 
 void MainWindow::on_savebtn_released()
@@ -525,32 +509,6 @@ void MainWindow::on_savebtn_released()
 void MainWindow::on_healthbtn_pressed()
 {
     healthing = ! healthing;
-//    if(healthing)
-//    {
-//        ui->healthlb->setStyleSheet(pressQss);
-//    }
-//    else {
-//        ui->healthlb->setStyleSheet(releaseQss);
-//    }
-    if(healthing)
-    {
-        ui->healthlb->setStyleSheet(
-                    "width:84px;"
-                    "height:60px;"
-                    "background:rgba(61,107,229,1);"
-                    "border-radius:2px;"
-
-    );
-    }
-    else {
-        ui->healthlb->setStyleSheet(
-                   " width:84px;"
-                    "height:60px;"
-                    "background:rgba(255,255,255,0.1);"
-                    "border-radius:2px;"
-
-    );
-    }
 }
 
 void MainWindow::on_healthbtn_released()
@@ -563,26 +521,6 @@ void MainWindow::on_brightbtn_pressed()
 {
     static bool bright = true;
 
-    if(bright)
-    {
-        ui->brightlb->setStyleSheet(
-                    "width:84px;"
-                    "height:60px;"
-                    "background:rgba(61,107,229,1);"
-                    "border-radius:2px;"
-
-    );
-    }
-    else {
-        ui->brightlb->setStyleSheet(
-                   " width:84px;"
-                    "height:60px;"
-                    "background:rgba(255,255,255,0.1);"
-                    "border-radius:2px;"
-
-    );
-    }
-    bright = ! bright;
 
 }
 

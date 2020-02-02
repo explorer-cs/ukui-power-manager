@@ -43,7 +43,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void initUi();
+//    void initUi();
     void initUi2();
     void get_power_list();
     void initData();
